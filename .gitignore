@@ -1,0 +1,13 @@
+# Archon runtime artifacts — never commit
+.archon/state/
+.archon/.env
+
+# OS / tooling
+.DS_Store
+node_modules/
+
+# Generated build output from workflow runs (kept out of the workflow-definition repo)
+brand-assets/
+frames/
+showcase-frames/
+*.mp4
