@@ -1,0 +1,18 @@
+<!-- CINEMATIC MODULE: Reveal Text — Best for: Headlines, section intros -->
+<style>
+.reveal-text { overflow:hidden; display:inline-block; }
+.reveal-text .word { display:inline-block; overflow:hidden; margin-right:0.3em; }
+.reveal-text .word-inner { display:inline-block; transform:translateY(110%); transition:transform 0.8s cubic-bezier(0.22,1,0.36,1); }
+.reveal-text.in-view .word-inner { transform:translateY(0); }
+.reveal-text .word:nth-child(1) .word-inner{transition-delay:0s} .reveal-text .word:nth-child(2) .word-inner{transition-delay:0.05s} .reveal-text .word:nth-child(3) .word-inner{transition-delay:0.1s} .reveal-text .word:nth-child(4) .word-inner{transition-delay:0.15s} .reveal-text .word:nth-child(5) .word-inner{transition-delay:0.2s} .reveal-text .word:nth-child(6) .word-inner{transition-delay:0.25s} .reveal-text .word:nth-child(7) .word-inner{transition-delay:0.3s} .reveal-text .word:nth-child(8) .word-inner{transition-delay:0.35s}
+.reveal-line { overflow:hidden; }
+.reveal-line .line { display:block; transform:translateY(100%); opacity:0; transition:transform 0.7s cubic-bezier(0.22,1,0.36,1),opacity 0.7s ease; }
+.reveal-line.in-view .line { transform:translateY(0); opacity:1; }
+.reveal-line .line:nth-child(2){transition-delay:0.15s} .reveal-line .line:nth-child(3){transition-delay:0.3s}
+</style>
+<h2 class="reveal-text" data-reveal>Built on trust, delivered with craft</h2>
+<script>
+document.querySelectorAll('.reveal-text').forEach(el=>{const t=el.textContent.trim();el.innerHTML=t.split(/\s+/).map(w=>'<span class="word"><span class="word-inner">'+w+'</span></span>').join('');});
+const revObs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('in-view');});},{threshold:0.2});
+document.querySelectorAll('[data-reveal],.reveal-text,.reveal-line').forEach(el=>revObs.observe(el));
+</script>

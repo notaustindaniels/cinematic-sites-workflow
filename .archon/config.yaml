@@ -1,4 +1,4 @@
-# Repo-scoped Archon configuration for the cinematic-sites workflow.
+# Repo-scoped Archon configuration for the cinematic-site workflow.
 assistant: claude
 
 worktree:

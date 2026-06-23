@@ -1,0 +1,35 @@
+/* Showcase text-overlay system — vendored from cinematic-site-kit-higgsfield SKILL.md §2E.
+   Captions positioned absolutely over the showcase scroll-frame canvas; they cross-fade
+   in/out as the user scrolls through the showcase section. The .showcase-overlay rule below
+   is the §2E block verbatim; .showcase- section/canvas helpers are added so this file is
+   self-contained (the skill says the showcase section is "identical in structure to the hero").
+   Injected inline by assemble-site.ts. */
+
+.showcase-overlay {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  font-family: var(--font-heading, serif);
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  color: #fff;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+  z-index: 3;
+  text-align: center;
+}
+
+/* Showcase scroll-frame section scaffolding (mirrors the hero section structure). */
+#showcase-section { position: relative; }
+#showcase-section .showcase-sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+#showcase-canvas { width: 100%; height: 100%; display: block; }
+.showcase-scrim {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.10) 45%, transparent 75%);
+}
+
+@media (max-width: 768px) {
+  .showcase-overlay { bottom: 12%; font-size: clamp(1.25rem, 6vw, 2rem); padding: 0 1rem; }
+}

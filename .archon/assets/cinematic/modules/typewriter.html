@@ -1,0 +1,10 @@
+<!-- CINEMATIC MODULE: Typewriter Text — Best for: Taglines, rotating phrases -->
+<style>
+.typewriter { font-family:var(--font-heading,serif); font-size:clamp(1.5rem,4vw,3rem); color:#fff; min-height:1.2em; }
+.typewriter .cursor { display:inline-block; width:3px; height:1em; background:var(--color-primary,#c8a97e); margin-left:4px; vertical-align:text-bottom; animation:blink 0.8s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+</style>
+<h2 class="typewriter" data-typewriter data-phrases='["Crafted with passion","Served with love","Remembered forever"]'><span class="cursor"></span></h2>
+<script>
+document.querySelectorAll('[data-typewriter]').forEach(el=>{const ph=JSON.parse(el.dataset.phrases||'["Hello"]');const cur=el.querySelector('.cursor');let pi=0,ci=0,del=false;function t(){const c=ph[pi];if(!del){el.textContent=c.slice(0,++ci);el.appendChild(cur);if(ci===c.length){setTimeout(()=>{del=true;t();},2000);return;}}else{el.textContent=c.slice(0,--ci);el.appendChild(cur);if(ci===0){del=false;pi=(pi+1)%ph.length;}}setTimeout(t,del?40:80);}const o=new IntersectionObserver(e=>{if(e[0].isIntersecting){t();o.disconnect();}},{threshold:0.5});o.observe(el);});
+</script>

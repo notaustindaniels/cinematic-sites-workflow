@@ -1,0 +1,12 @@
+<!-- CINEMATIC MODULE: Glitch Text — Best for: Tech, edgy brands -->
+<style>
+.glitch-text { font-family:var(--font-heading,monospace); font-size:clamp(3rem,8vw,7rem); font-weight:700; position:relative; color:#fff; text-align:center; }
+.glitch-text::before,.glitch-text::after { content:attr(data-text); position:absolute; inset:0; overflow:hidden; }
+.glitch-text::before { color:#ff0040; animation:g1 3s infinite linear alternate-reverse; clip-path:inset(0 0 60% 0); }
+.glitch-text::after { color:#00e5ff; animation:g2 2s infinite linear alternate-reverse; clip-path:inset(40% 0 0 0); }
+@keyframes g1{0%{transform:translate(0)}20%{transform:translate(-3px,3px)}40%{transform:translate(3px,-3px)}60%{transform:translate(-2px,1px)}80%{transform:translate(2px,-2px)}100%{transform:translate(0)}}
+@keyframes g2{0%{transform:translate(0)}25%{transform:translate(3px,-2px)}50%{transform:translate(-3px,2px)}75%{transform:translate(1px,3px)}100%{transform:translate(0)}}
+.glitch-wrapper { position:relative; padding:10vh 2rem; }
+.glitch-wrapper::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 4px); pointer-events:none; }
+</style>
+<div class="glitch-wrapper"><h2 class="glitch-text" data-text="BREAKING LIMITS">BREAKING LIMITS</h2></div>

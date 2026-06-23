@@ -1,0 +1,615 @@
+name: cinematic-site
+description: |
+  Turn a website or business idea into a cinematic, scroll-animated landing page with an
+  AI hero video (Higgsfield: Nano Banana Pro + Seedance 2.0 Fast), then build and deploy it.
+  Decomposed, schema-constrained, critic-verified pipeline tuned so weak models match the
+  cinematic-site-kit-higgsfield skill's quality. Gated at each PAUSE point.
+  Use when the user wants a cinematic landing page, scroll-animated / scrollytelling site,
+  a hero-video marketing page, or wants to make an existing site "cinematic" with Higgsfield.
+  NOT for generic product photos, Remotion videos, or non-cinematic sites.
+provider: claude
+model: sonnet
+interactive: true
+thinking: adaptive
+worktree:
+  enabled: false  # in-place run: archon's worktree manager errors on this host
+  # (raw `git worktree add` works; trustworthiness comes from committing .archon/
+  # — the tree is clean and run artifacts are written outside the repo).
+
+nodes:
+  # ════════════════════════════════ A. PREFLIGHT & GUARDS ════════════════════════════════
+  - id: preflight
+    script: preflight
+    runtime: bun
+    timeout: 90000
+
+  - id: require-higgsfield
+    cancel: "Higgsfield CLI not found or not authenticated. Install it and run `higgsfield auth login`, then re-run."
+    depends_on: [preflight]
+    when: "$preflight.output.higgsfield == 'false'"
+
+  - id: require-ffmpeg
+    cancel: "ffmpeg is required for scroll-frame extraction. Install ffmpeg (brew install ffmpeg) and re-run."
+    depends_on: [preflight]
+    when: "$preflight.output.ffmpeg == 'false'"
+
+  - id: warn-credits
+    bash: |
+      echo "⚠ Higgsfield credit balance is low ($preflight.output.credits). A full hero + 2-frame showcase run can cost ~120-180 credits. Consider topping up before approving the generation plan."
+    depends_on: [preflight]
+    when: "$preflight.output.credits < '120'"
+    trigger_rule: all_done
+
+  # ════════════════════════════════ B. INTAKE ════════════════════════════════
+  - id: intake-draft
+    command: intake-draft
+    depends_on: [preflight]
+    when: "$preflight.output.higgsfield == 'true'"
+    context: fresh
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        mode: { type: string, enum: [existing-site, business-concept] }
+        business_name: { type: string }
+        services: { type: array, items: { type: string } }
+        city: { type: string }
+        service_area: { type: string }
+        customers: { type: string }
+        ideal_customer: { type: string }
+        ticket_band: { type: string }
+        mood: { type: array, items: { type: string } }
+        references: { type: array, items: { type: string } }
+        donots: { type: array, items: { type: string } }
+        want_showcase: { type: string, enum: ['true', 'false'] }
+        want_before_after: { type: string, enum: ['true', 'false'] }
+        brands: { type: array, items: { type: string } }
+        deploy_target: { type: string, enum: [vercel, local] }
+        domain: { type: string }
+        existing_assets: { type: string }
+        open_questions: { type: array, items: { type: string } }
+      required: [mode, business_name, services, city, service_area, customers, mood, want_showcase, want_before_after, deploy_target, open_questions]
+
+  - id: intake-check
+    script: intake-check
+    runtime: bun
+    depends_on: [intake-draft]
+    timeout: 20000
+
+  - id: intake-gate
+    approval:
+      message: |
+        STEP 0 — Review the client brief at $ARTIFACTS_DIR/intake-brief.md and the open questions it lists.
+        Reject with answers to any open/vague items to refine the brief; approve when it is accurate and complete.
+      capture_response: true
+      on_reject:
+        prompt: |
+          Fold these answers into $ARTIFACTS_DIR/intake-brief.md and $ARTIFACTS_DIR/intake.json (keep both in sync,
+          same JSON shape). Resolve any now-answered open_questions, remove them from the list, and re-ask anything
+          still vague — pleasantly persistent, never assume a MUST-HAVE (services/city/customers). Human feedback:
+          $REJECTION_REASON
+        max_attempts: 6
+    depends_on: [intake-draft, intake-check]
+
+  # ════════════════════════════════ C. BRAND ════════════════════════════════
+  - id: brand-system
+    command: brand-system
+    depends_on: [intake-gate]
+    context: fresh
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        business_name: { type: string }
+        industry: { type: string }
+        color_bg: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+        color_primary: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+        color_secondary: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+        color_accent: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+        color_text: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+        font_heading: { type: string }
+        font_body: { type: string }
+        font_heading_name: { type: string }
+        font_body_name: { type: string }
+        google_fonts_url: { type: string }
+        headline: { type: string }
+        tagline: { type: string }
+        hero_line: { type: string }
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              title: { type: string }
+              body: { type: string }
+            required: [key, title, body]
+        theme_direction: { type: string }
+        mood: { type: array, items: { type: string }, minItems: 4, maxItems: 4 }
+      required: [business_name, industry, color_bg, color_primary, color_secondary, color_accent, color_text, font_heading, font_body, font_heading_name, font_body_name, google_fonts_url, headline, tagline, hero_line, sections, theme_direction, mood]
+
+  - id: brand-card
+    script: brand-card
+    runtime: bun
+    depends_on: [brand-system]
+    timeout: 30000
+
+  - id: brand-critic
+    prompt: |
+      You are a strict brand-consistency critic. Read the rubric at
+      .archon/assets/cinematic/rubrics/brand.md and apply it VERBATIM as your bar.
+      Judge $ARTIFACTS_DIR/brand/brand-system.json against the client brief at
+      $ARTIFACTS_DIR/intake-brief.md (and $ARTIFACTS_DIR/intake.json).
+      Write your full verdict to $ARTIFACTS_DIR/brand/brand-verdict.json, then return the same verdict.
+    depends_on: [brand-system]
+    context: fresh
+    allowed_tools: [Read, Write]
+    output_format:
+      type: object
+      properties:
+        verdict: { type: string, enum: [PASS, FAIL] }
+        reasons: { type: array, items: { type: string } }
+        fixes: { type: array, items: { type: string } }
+      required: [verdict, reasons, fixes]
+
+  - id: brand-gate
+    approval:
+      message: |
+        STEP 1 — Open $ARTIFACTS_DIR/brand/brand-card.html in a browser to review the brand system.
+        The automated critic verdict is in $ARTIFACTS_DIR/brand/brand-verdict.json.
+        Approve to lock the brand, or reject with specific changes (colors/fonts/copy).
+      capture_response: true
+      on_reject:
+        prompt: |
+          Revise $ARTIFACTS_DIR/brand/brand-system.json to address the critic reasons in
+          $ARTIFACTS_DIR/brand/brand-verdict.json AND this human feedback: $REJECTION_REASON
+          Keep all hex 6-digit and fonts real Google Fonts. Then rebuild the card by running:
+          `bun .archon/scripts/brand-card.ts`. Keep brand-system.json and the card in sync.
+        max_attempts: 5
+    depends_on: [brand-card, brand-critic]
+
+  # ════════════════════════════════ D. GENERATION PLAN (keystone) ════════════════════════════════
+  - id: generation-plan
+    command: generation-plan
+    depends_on: [brand-gate]
+    context: fresh
+    model: opus
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        showcase_enabled: { type: string, enum: ['true', 'false'] }
+        before_after_enabled: { type: string, enum: ['true', 'false'] }
+        hero:
+          type: object
+          properties:
+            reference_prompt: { type: string }
+            want_end_frame: { type: string, enum: ['true', 'false'] }
+            variants: { type: integer, minimum: 1, maximum: 4 }
+            duration: { type: integer, minimum: 4, maximum: 12 }
+          required: [reference_prompt, want_end_frame, variants, duration]
+        modules: { type: array, items: { type: string } }
+        scroll_heights:
+          type: object
+          properties:
+            hero: { type: string }
+            showcase: { type: string }
+          required: [hero, showcase]
+        deploy:
+          type: object
+          properties:
+            target: { type: string, enum: [vercel, local] }
+            domain: { type: string }
+          required: [target]
+      required: [showcase_enabled, before_after_enabled, hero, modules, scroll_heights, deploy]
+
+  - id: plan-critic
+    prompt: |
+      You are a strict generation-plan critic. Read the rubric at
+      .archon/assets/cinematic/rubrics/plan.md and apply it VERBATIM.
+      Judge $ARTIFACTS_DIR/plan.json against the brief ($ARTIFACTS_DIR/intake-brief.md) and brand
+      ($ARTIFACTS_DIR/brand/brand-system.json). Verify: only requested optional assets are planned
+      (no unrequested showcase / before-after), Brand Logo Marquee is present iff brands exist,
+      Before/After Slider is present iff before_after is enabled, and the showcase scenes form a sound
+      2-keyframe-per-scene chain — each end_state REVEALS what was already visible in its start_state
+      (never invents an unseen space), each scene after the first reuses the prior end_state as its
+      start_state, and each non-final scene seeds the next. Do NOT police camera ambition. Write your
+      verdict to $ARTIFACTS_DIR/plan-verdict.json, then return the same verdict.
+    depends_on: [generation-plan]
+    context: fresh
+    allowed_tools: [Read, Write]
+    output_format:
+      type: object
+      properties:
+        verdict: { type: string, enum: [PASS, FAIL] }
+        reasons: { type: array, items: { type: string } }
+        fixes: { type: array, items: { type: string } }
+      required: [verdict, reasons, fixes]
+
+  - id: plan-flatten
+    script: plan-flatten
+    runtime: bun
+    depends_on: [generation-plan]
+    timeout: 30000
+
+  - id: plan-gate
+    approval:
+      message: |
+        GENERATION PLAN — Review $ARTIFACTS_DIR/plan.json (and the critic verdict at
+        $ARTIFACTS_DIR/plan-verdict.json). This is exactly what will be generated and the implied
+        credit spend BEFORE any paid generation. Approve to start generating, or reject with changes.
+      capture_response: true
+      on_reject:
+        prompt: |
+          Revise $ARTIFACTS_DIR/plan.json to address the critic reasons in $ARTIFACTS_DIR/plan-verdict.json
+          AND this human feedback: $REJECTION_REASON. Then re-flatten the work-item lists by running:
+          `bun .archon/scripts/plan-flatten.ts`.
+        max_attempts: 5
+    depends_on: [plan-critic, plan-flatten]
+
+  # ════════════════════════════════ E. HERO SCENE (always) ════════════════════════════════
+  - id: hero-ref-prompt
+    command: hero-ref-prompt
+    depends_on: [plan-gate]
+    context: fresh
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        prompt: { type: string }
+      required: [prompt]
+
+  - id: hero-ref-gen
+    script: gen-hero-ref
+    runtime: bun
+    depends_on: [hero-ref-prompt]
+    timeout: 600000
+    retry:
+      max_attempts: 2
+      delay_ms: 5000
+
+  - id: hero-director-brief
+    command: hero-director-brief
+    depends_on: [hero-ref-gen]
+    context: fresh
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        product: { type: string }
+        hero_moment: { type: string }
+        camera_start: { type: string }
+        camera_path: { type: string }
+        camera_end: { type: string }
+        transforms: { type: array, items: { type: string }, minItems: 2 }
+        start_frame_prompt: { type: string }
+        end_frame_prompt: { type: string }
+        want_end_frame: { type: string, enum: ['true', 'false'] }
+        needs_new_start_frame: { type: string, enum: ['true', 'false'] }
+      required: [product, hero_moment, camera_start, camera_path, camera_end, transforms, start_frame_prompt, end_frame_prompt, want_end_frame, needs_new_start_frame]
+
+  - id: brief-critic
+    prompt: |
+      You are a strict Director's-Brief critic. Read the rubric at
+      .archon/assets/cinematic/rubrics/director-brief.md and apply it VERBATIM. Judge
+      $ARTIFACTS_DIR/scenes/hero/director-brief.json. FAIL if the hero_moment is just a closer crop of
+      the reference (no transformation), or if camera_path lacks real travel through space. Write the
+      verdict to $ARTIFACTS_DIR/scenes/hero/brief-verdict.json, then return the same verdict.
+    depends_on: [hero-director-brief]
+    context: fresh
+    allowed_tools: [Read, Write]
+    output_format:
+      type: object
+      properties:
+        verdict: { type: string, enum: [PASS, FAIL] }
+        reasons: { type: array, items: { type: string } }
+        fixes: { type: array, items: { type: string } }
+      required: [verdict, reasons, fixes]
+
+  - id: hero-end-frame-gen
+    script: gen-hero-end
+    runtime: bun
+    depends_on: [hero-director-brief]
+    when: "$hero-director-brief.output.want_end_frame == 'true'"
+    timeout: 600000
+    retry:
+      max_attempts: 2
+      delay_ms: 5000
+
+  - id: hero-video-prompt
+    command: hero-video-prompt
+    depends_on: [hero-director-brief]
+    context: fresh
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        opening_scene: { type: string }
+        beats:
+          type: array
+          minItems: 4
+          items:
+            type: object
+            properties:
+              t: { type: string }
+              camera_motion: { type: string }
+              subject_motion: { type: string }
+            required: [t, camera_motion, subject_motion]
+        camera_path_summary: { type: string }
+        negatives: { type: string }
+      required: [opening_scene, beats, camera_path_summary, negatives]
+
+  - id: prompt-critic
+    prompt: |
+      You are a strict hero-video-prompt critic. Read the rubric at
+      .archon/assets/cinematic/rubrics/video-prompt.md and apply it VERBATIM. Judge
+      $ARTIFACTS_DIR/scenes/hero/video-prompt.json. FAIL if any beat lacks camera motion through space,
+      if it reads as a loop, or if the stability/no-morph negatives are missing. Write the verdict to
+      $ARTIFACTS_DIR/scenes/hero/prompt-verdict.json, then return the same verdict.
+    depends_on: [hero-video-prompt]
+    context: fresh
+    allowed_tools: [Read, Write]
+    output_format:
+      type: object
+      properties:
+        verdict: { type: string, enum: [PASS, FAIL] }
+        reasons: { type: array, items: { type: string } }
+        fixes: { type: array, items: { type: string } }
+      required: [verdict, reasons, fixes]
+
+  - id: hero-gen
+    script: gen-hero-video
+    runtime: bun
+    depends_on: [hero-video-prompt, hero-end-frame-gen]
+    # one_success (not none_failed_*): the end-frame is OPTIONAL, so a failed
+    # hero-end-frame-gen must NOT block hero-gen — as long as hero-video-prompt
+    # succeeded, generate from the start frame alone. gen-hero-video uses the
+    # end frame only if end-frame.png exists.
+    trigger_rule: one_success
+    timeout: 3600000
+    retry:
+      max_attempts: 2
+      delay_ms: 8000
+
+  - id: hero-validate
+    script: hero-validate
+    runtime: bun
+    depends_on: [hero-gen]
+    timeout: 120000
+
+  - id: hero-gate
+    approval:
+      message: |
+        STEP 2 (HERO) — Review the hero video variants and preview frames in $ARTIFACTS_DIR/scenes/hero/.
+        Validation: $ARTIFACTS_DIR/scenes/hero/hero-validate.json. The selected variant is hero-final.mp4.
+        Approve, or reject naming the variant + the issue (Ken-Burns / flat / morph) to regenerate.
+      capture_response: true
+      on_reject:
+        prompt: |
+          Apply the skill's Step-2D diagnosis to this feedback: $REJECTION_REASON
+          (Ken-Burns -> add subject motion; flat -> camera must travel; morphing -> add physics negatives).
+          Regenerate ONLY the called-out variant by running `bun .archon/scripts/gen-hero-video.ts`
+          with the corrected prompt, then set $ARTIFACTS_DIR/scenes/hero/hero-final.mp4 to the chosen variant
+          and re-run `bun .archon/scripts/hero-validate.ts`.
+        max_attempts: 5
+    depends_on: [hero-validate, brief-critic, prompt-critic]
+    trigger_rule: none_failed_min_one_success
+
+  # ════════════════════════════════ F. SHOWCASE (conditional loop) ════════════════════════════════
+  - id: showcase-loop
+    depends_on: [plan-gate]
+    when: "$generation-plan.output.showcase_enabled == 'true'"
+    idle_timeout: 1800000
+    loop:
+      prompt: |
+        FRESH iteration — no memory of prior iterations. State lives in $ARTIFACTS_DIR/showcase/plan.json.
+        IMPORTANT: every plan-step.ts command MUST be prefixed with `ARTIFACTS_DIR="$ARTIFACTS_DIR"` (the
+        work-item state lives there and your shell does not inherit it) — copy the commands below verbatim.
+
+        THE MODEL — the showcase is a 2-keyframe-per-scene CHAIN, ONE continuous flythrough through one space:
+          kf0 ──clip1──► kf1 ──clip2──► kf2 ──clip3──► kf3
+        kf0 is the only fresh image; every later keyframe is an EDIT of the one before it (refs[0]); each clip
+        animates between its two bounding keyframes. The HARD rule on every reveal: REVEAL what is already on
+        screen, NEVER invent a space that wasn't visible in the reference. Same world, same light throughout.
+
+        1. Get the next pending work-item:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next showcase
+           If it prints NONE, output <promise>SHOWCASE_DONE</promise> and stop.
+        2. Parse the item JSON. Fields: id, type [keyframe|clip], prompt_role [establish|reveal|clip], refs[],
+           out, scene_label, depicts, evolves_from, seeds_next, lighting, camera, from_state, to_state,
+           duration, context_notes. ALWAYS honor context_notes — it spells out the continuity for this item.
+        3. Compose the generation prompt:
+           - type == keyframe -> follow .archon/assets/cinematic/templates/keyframe-template.md EXACTLY.
+             * prompt_role == "establish" (kf0, refs[] empty): write a FRESH, hyper-specific NB-Pro prompt for
+               `depicts` (template §A) — 16:9, named angle, dense materials, set the `lighting` mood, and SEED
+               what the first scene moves toward. No reference image.
+             * prompt_role == "reveal" (refs[0] = the prior keyframe): write an NB-Pro EDIT that leads with
+               "Edit the reference image so that …" (template §B). Evolve `evolves_from` into `depicts`. THE
+               HARD RULE: everything new must already be visible/implied in the reference — reveal it, never
+               invent. Geometry-not-labels for any mechanism, never the word "dark", negate the wrong open-mode,
+               name the concrete content, keep `seeds_next` visible, and keep the world + light identical to the
+               reference (do NOT re-specify a different mood — it inherits the light for free).
+           - type == clip -> follow .archon/assets/cinematic/templates/clip-template.md EXACTLY (Seedance
+             5-layer). Animate `from_state` (refs[0]) → `to_state` (refs[1]) with the director's `camera` intent.
+             Use the mechanism form if a mechanism actuates, or the pure-traversal form if it's a camera move.
+           Read brand at $ARTIFACTS_DIR/brand/brand-system.json for palette/voice. Write the composed prompt to
+           $ARTIFACTS_DIR/showcase/<id>.prompt.txt
+        4. Generate (keyframes at 2k — the skill's resolution for showcase frames; the assembler upscales later):
+           - establish keyframe (refs[] empty): bun .archon/scripts/hf-image.ts --prompt-file <promptfile> --out <out> --resolution 2k
+           - reveal keyframe (refs[0] = prior kf):  bun .archon/scripts/hf-image.ts --prompt-file <promptfile> --out <out> --image <refs[0]> --resolution 2k
+           - clip (refs = [start kf, end kf]):       bun .archon/scripts/hf-video.ts --prompt-file <promptfile> --out <out> --start-image <refs[0]> --end-image <refs[1]> --duration <duration>
+             ALWAYS pass BOTH --start-image and --end-image — that is what keeps Seedance from hallucinating.
+        5. Critique the RESULT PROMPT against the matching rubric (.archon/assets/cinematic/rubrics/keyframe.md
+           for keyframes, clip.md for clips). If it FAILS and you have budget, fix the prompt and regenerate the
+           SAME item. If it PASSES and the output file exists, mark done:
+             ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --mark-done showcase <id>
+           If generation ERRORED (transient Higgsfield failure), do NOT mark done — end your turn so it retries
+           next iteration (a clip failure must never nuke the chain; already-generated frames are kept).
+        6. Do exactly ONE work-item per iteration, then end your turn.
+      until: SHOWCASE_DONE
+      max_iterations: 60
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done showcase'
+
+  - id: showcase-stitch
+    script: showcase-stitch
+    runtime: bun
+    depends_on: [showcase-loop]
+    timeout: 300000
+
+  - id: showcase-gate
+    approval:
+      message: |
+        STEP 2 (SHOWCASE) — Review the stitched showcase video and per-scene clips in
+        $ARTIFACTS_DIR/scenes/showcase/. Approve, or reject naming the scene/clip + issue to regenerate.
+      capture_response: true
+      on_reject:
+        prompt: |
+          For the items called out in this feedback: $REJECTION_REASON — reset their status to "pending"
+          in $ARTIFACTS_DIR/showcase/plan.json, regenerate them via the hf-image.ts / hf-video.ts scripts
+          following the keyframe/clip templates, then re-run `bun .archon/scripts/showcase-stitch.ts`.
+        max_attempts: 4
+    depends_on: [showcase-stitch]
+
+  # ════════════════════════════════ G. BEFORE / AFTER (conditional loop) ════════════════════════════════
+  - id: beforeafter-loop
+    depends_on: [plan-gate]
+    when: "$generation-plan.output.before_after_enabled == 'true'"
+    idle_timeout: 1200000
+    loop:
+      prompt: |
+        FRESH iteration — no memory. State lives in $ARTIFACTS_DIR/beforeafter/plan.json.
+        IMPORTANT: every plan-step.ts command MUST be prefixed with `ARTIFACTS_DIR="$ARTIFACTS_DIR"` (your
+        shell does not inherit it) — copy the commands below verbatim.
+
+        1. Next pending pair:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next beforeafter
+           If NONE, output <promise>BEFOREAFTER_DONE</promise> and stop.
+        2. Parse the pair JSON (id, caption, after_prompt, after_out, before_out).
+        3. Generate the AFTER first, then derive the BEFORE from it
+           (.archon/assets/cinematic/templates/beforeafter-template.md):
+           - after:  bun .archon/scripts/hf-image.ts --prompt-file <afterpromptfile> --out <after_out> --resolution 2k
+           - before: bun .archon/scripts/hf-image.ts --prompt-file <beforepromptfile> --out <before_out> --image <after_out> --resolution 2k
+             (before prompt = "exactly like this reference, but [old/worn]; same composition, angle, lighting, environment")
+        4. Critique against .archon/assets/cinematic/rubrics/beforeafter.md (the two must share composition so the
+           slider lines up). If PASS:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --mark-done beforeafter <id>
+        5. ONE pair per iteration, then end your turn.
+      until: BEFOREAFTER_DONE
+      max_iterations: 30
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done beforeafter'
+
+  - id: beforeafter-gate
+    approval:
+      message: |
+        STEP 2 (BEFORE/AFTER) — Review the before/after pairs in $ARTIFACTS_DIR/scenes/beforeafter/.
+        Each pair must share composition so the slider lines up. Approve or reject with the pair + issue.
+      capture_response: true
+      on_reject:
+        prompt: |
+          For the pairs called out in: $REJECTION_REASON — reset their status to "pending" in
+          $ARTIFACTS_DIR/beforeafter/plan.json and regenerate (after-first, then before via --image).
+        max_attempts: 4
+    depends_on: [beforeafter-loop]
+
+  # ════════════════════════════════ H. BUILD ════════════════════════════════
+  - id: extract-frames
+    script: extract-frames
+    runtime: bun
+    depends_on: [hero-gate, showcase-gate, beforeafter-gate]
+    trigger_rule: none_failed_min_one_success
+    timeout: 300000
+
+  - id: site-plan
+    command: site-plan
+    depends_on: [extract-frames]
+    context: fresh
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        nav_links: { type: array, items: { type: string } }
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              copy: { type: string }
+            required: [key, copy]
+        modules:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              slots: { type: object }
+            required: [name]
+        cta:
+          type: object
+          properties:
+            headline: { type: string }
+            button_label: { type: string }
+          required: [headline, button_label]
+        use_looping_hero: { type: string, enum: ['true', 'false'] }
+      required: [sections, modules, cta]
+
+  - id: assemble-site
+    script: assemble-site
+    runtime: bun
+    depends_on: [site-plan]
+    timeout: 120000
+
+  - id: build-check
+    script: build-check
+    runtime: bun
+    depends_on: [assemble-site]
+    timeout: 60000
+
+  - id: site-critic
+    prompt: |
+      You are a strict final-site critic. Read the rubric at .archon/assets/cinematic/rubrics/site.md and
+      apply it VERBATIM. Judge the assembled $ARTIFACTS_DIR/site/index.html plus the deterministic results
+      in $ARTIFACTS_DIR/site/build-check.json. Cover the subjective remainder the script can't: legibility,
+      copy quality, "go all out", module fit. Write the verdict to $ARTIFACTS_DIR/site/site-verdict.json,
+      then return the same verdict.
+    depends_on: [build-check]
+    context: fresh
+    allowed_tools: [Read, Write]
+    output_format:
+      type: object
+      properties:
+        verdict: { type: string, enum: [PASS, FAIL] }
+        reasons: { type: array, items: { type: string } }
+        fixes: { type: array, items: { type: string } }
+      required: [verdict, reasons, fixes]
+
+  - id: site-gate
+    approval:
+      message: |
+        STEP 3 (SITE) — Open $ARTIFACTS_DIR/site/index.html and scroll it. Deterministic checklist:
+        $ARTIFACTS_DIR/site/build-check.json. Critic: $ARTIFACTS_DIR/site/site-verdict.json.
+        Approve to deploy, or reject with specific tweaks.
+      capture_response: true
+      on_reject:
+        prompt: |
+          Address the build-check failures ($ARTIFACTS_DIR/site/build-check.json), the critic reasons
+          ($ARTIFACTS_DIR/site/site-verdict.json), and this human feedback: $REJECTION_REASON.
+          Edit ONLY via the site plan + assembler — update $ARTIFACTS_DIR/site/site-plan.json then re-run
+          `bun .archon/scripts/assemble-site.ts` and `bun .archon/scripts/build-check.ts`. Never hand-edit index.html.
+        max_attempts: 5
+    depends_on: [build-check, site-critic]
+
+  # ════════════════════════════════ I. DEPLOY ════════════════════════════════
+  - id: deploy
+    command: deploy-finalize
+    depends_on: [site-gate]
+    context: fresh
+    skills: [cinematic-site-kit-higgsfield]
+    idle_timeout: 600000
+
+  - id: report
+    bash: |
+      echo "===================== CINEMATIC SITE — DELIVERY ====================="
+      cat "$ARTIFACTS_DIR/deploy-summary.md" 2>/dev/null || echo "deploy-summary.md not found"
+      echo "===================================================================="
+    depends_on: [deploy]
+    trigger_rule: all_done

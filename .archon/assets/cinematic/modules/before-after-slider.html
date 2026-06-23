@@ -1,0 +1,176 @@
+<!--
+  CINEMATIC MODULE: Before/After Comparison Slider
+  Best for: Renovation, cleaning, restoration, beauty, landscaping — any transformation service
+  Requires: Two images per comparison (before + after). Generate both with Nano Banana 2.
+  
+  IMAGE GENERATION STRATEGY:
+  Generate the "after" image first (the ideal result), then generate the "before" image by prompting:
+  "Create an image exactly like this reference, but [describe the before state]. Same composition, same angle, same lighting setup."
+  This ensures both images share identical composition so the slider comparison is convincing.
+-->
+
+<style>
+.ba-section {
+  padding: clamp(4rem, 10vh, 8rem) clamp(2rem, 5vw, 6rem);
+}
+.ba-section-title {
+  font-family: var(--font-heading, serif);
+  font-size: clamp(1.8rem, 4vw, 3.5rem);
+  color: #fff;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+.ba-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.ba-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  cursor: ew-resize;
+  user-select: none;
+  -webkit-user-select: none;
+  aspect-ratio: 16/10;
+}
+.ba-container img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.ba-after {
+  z-index: 1;
+}
+.ba-before {
+  z-index: 2;
+  clip-path: inset(0 50% 0 0);
+}
+.ba-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  background: #fff;
+  z-index: 3;
+  transform: translateX(-50%);
+  box-shadow: 0 0 12px rgba(0,0,0,0.4);
+}
+.ba-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.ba-handle::after {
+  content: '◂ ▸';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  color: #333;
+  letter-spacing: 2px;
+  white-space: nowrap;
+  z-index: 4;
+}
+.ba-label {
+  position: absolute;
+  bottom: 1rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 100px;
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  z-index: 4;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.ba-label-before {
+  left: 1rem;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+}
+.ba-label-after {
+  right: 1rem;
+  background: rgba(255,255,255,0.8);
+  color: #111;
+}
+.ba-caption {
+  text-align: center;
+  margin-top: 1rem;
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.78);
+}
+
+@media (max-width: 768px) {
+  .ba-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+<!-- SAMPLE HTML -->
+<section class="ba-section">
+  <h2 class="ba-section-title">See the Difference</h2>
+  <div class="ba-grid">
+    <div>
+      <div class="ba-container" data-before-after>
+        <img class="ba-after" src="after-1.jpg" alt="After">
+        <img class="ba-before" src="before-1.jpg" alt="Before">
+        <div class="ba-handle"></div>
+        <span class="ba-label ba-label-before">Before</span>
+        <span class="ba-label ba-label-after">After</span>
+      </div>
+      <p class="ba-caption">Window replacement — Living room</p>
+    </div>
+    <div>
+      <div class="ba-container" data-before-after>
+        <img class="ba-after" src="after-2.jpg" alt="After">
+        <img class="ba-before" src="before-2.jpg" alt="Before">
+        <div class="ba-handle"></div>
+        <span class="ba-label ba-label-before">Before</span>
+        <span class="ba-label ba-label-after">After</span>
+      </div>
+      <p class="ba-caption">Entry door upgrade — Front entrance</p>
+    </div>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('[data-before-after]').forEach(container => {
+  const before = container.querySelector('.ba-before');
+  const handle = container.querySelector('.ba-handle');
+  let isDragging = false;
+
+  function updatePosition(x) {
+    const rect = container.getBoundingClientRect();
+    let pos = ((x - rect.left) / rect.width) * 100;
+    pos = Math.min(Math.max(pos, 2), 98);
+    before.style.clipPath = `inset(0 ${100 - pos}% 0 0)`;
+    handle.style.left = pos + '%';
+  }
+
+  container.addEventListener('mousedown', (e) => { isDragging = true; updatePosition(e.clientX); });
+  window.addEventListener('mousemove', (e) => { if (isDragging) { e.preventDefault(); updatePosition(e.clientX); } });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  container.addEventListener('touchstart', (e) => { isDragging = true; updatePosition(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchmove', (e) => { if (isDragging) updatePosition(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchend', () => { isDragging = false; });
+});
+</script>

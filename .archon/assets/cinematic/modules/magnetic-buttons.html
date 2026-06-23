@@ -1,0 +1,16 @@
+<!-- CINEMATIC MODULE: Magnetic Buttons — Best for: CTAs, premium feel -->
+<style>
+.magnetic-btn { display:inline-flex; align-items:center; justify-content:center; padding:1rem 2.5rem; font-family:var(--font-body,sans-serif); font-size:0.9rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:#fff; background:transparent; border:1px solid rgba(255,255,255,0.3); border-radius:100px; cursor:pointer; position:relative; overflow:hidden; transition:border-color 0.3s,color 0.3s; }
+.magnetic-btn::before { content:''; position:absolute; inset:0; background:var(--color-primary,#c8a97e); transform:scaleX(0); transform-origin:right; transition:transform 0.5s cubic-bezier(0.22,1,0.36,1); z-index:-1; border-radius:inherit; }
+.magnetic-btn:hover::before { transform:scaleX(1); transform-origin:left; }
+.magnetic-btn:hover { border-color:var(--color-primary,#c8a97e); }
+.magnetic-btn.filled { background:var(--color-primary,#c8a97e); border-color:var(--color-primary,#c8a97e); color:#000; }
+.magnetic-btn.filled::before { background:#fff; }
+</style>
+<div style="display:flex;gap:1.5rem;justify-content:center;padding:4rem;">
+  <button class="magnetic-btn" data-magnetic>Explore</button>
+  <button class="magnetic-btn filled" data-magnetic>Get Started</button>
+</div>
+<script>
+document.querySelectorAll('[data-magnetic]').forEach(b=>{b.addEventListener('mousemove',e=>{const r=b.getBoundingClientRect();b.style.transform='translate('+(e.clientX-r.left-r.width/2)*0.3+'px,'+(e.clientY-r.top-r.height/2)*0.3+'px)';});b.addEventListener('mouseleave',()=>{b.style.transform='translate(0,0)';b.style.transition='transform 0.5s cubic-bezier(0.22,1,0.36,1)';});b.addEventListener('mouseenter',()=>{b.style.transition='transform 0.1s ease';});});
+</script>

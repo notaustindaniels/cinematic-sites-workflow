@@ -1,0 +1,15 @@
+<!-- CINEMATIC MODULE: Kinetic Typography — Best for: Bold statements, brand manifestos -->
+<style>
+.kinetic-text { font-family:var(--font-heading,serif); font-size:clamp(3rem,10vw,8rem); font-weight:700; line-height:1; text-align:center; padding:15vh 2rem; overflow:hidden; }
+.kinetic-text .kt-line { display:block; overflow:hidden; }
+.kinetic-text .kt-word { display:inline-block; transform:translateY(120%); transition:transform 1s cubic-bezier(0.22,1,0.36,1); }
+.kinetic-text.in-view .kt-word { transform:translateY(0); }
+.kinetic-text .kt-line:nth-child(even) .kt-word { transform:translateY(-120%); }
+.kinetic-text.in-view .kt-line:nth-child(even) .kt-word { transform:translateY(0); }
+.kinetic-text .kt-line:nth-child(1) .kt-word{transition-delay:0s} .kinetic-text .kt-line:nth-child(2) .kt-word{transition-delay:0.15s} .kinetic-text .kt-line:nth-child(3) .kt-word{transition-delay:0.3s}
+</style>
+<div class="kinetic-text" data-kinetic><span class="kt-line"><span class="kt-word">Crafted</span></span><span class="kt-line"><span class="kt-word">With</span></span><span class="kt-line"><span class="kt-word">Passion</span></span></div>
+<script>
+const kObs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('in-view');});},{threshold:0.2});
+document.querySelectorAll('[data-kinetic],.kinetic-text').forEach(el=>kObs.observe(el));
+</script>

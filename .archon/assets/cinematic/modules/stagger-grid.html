@@ -1,0 +1,16 @@
+<!-- CINEMATIC MODULE: Staggered Grid Reveal — Best for: Team, feature grids, products -->
+<style>
+.stagger-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:1.5rem; padding:2rem; }
+.stagger-item { opacity:0; transform:translateY(60px) scale(0.95); transition:all 0.7s cubic-bezier(0.22,1,0.36,1); }
+.stagger-item.revealed { opacity:1; transform:translateY(0) scale(1); }
+.stagger-item .item-img { width:100%; aspect-ratio:4/5; object-fit:cover; border-radius:12px; display:block; }
+.stagger-item .item-title { font-family:var(--font-heading,serif); font-size:1.1rem; color:#fff; margin-top:1rem; }
+.stagger-item .item-desc { font-size:0.85rem; color:rgba(255,255,255,0.5); margin-top:0.3rem; }
+</style>
+<div class="stagger-grid" data-stagger>
+  <div class="stagger-item"><img class="item-img" src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=500&q=80" alt=""><div class="item-title">Item Title</div><div class="item-desc">Description</div></div>
+</div>
+<script>
+const sgObs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.querySelectorAll('.stagger-item').forEach((i,n)=>{setTimeout(()=>i.classList.add('revealed'),n*120);});sgObs.unobserve(x.target);}});},{threshold:0.1});
+document.querySelectorAll('[data-stagger]').forEach(el=>sgObs.observe(el));
+</script>

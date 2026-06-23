@@ -1,0 +1,181 @@
+<!--
+  CINEMATIC MODULE: Brand Logo Marquee
+  Best for: Trusted brands, partner logos, client logos, product lines
+  Shows a continuously scrolling row of brand logos with names underneath.
+  
+  LOGO SOURCING:
+  - Ask the user for logo files, or
+  - Search for "[Brand Name] logo PNG transparent" and download, or
+  - Generate simple text-based logo placeholders with the brand name
+  - Use white or light-colored logos on dark backgrounds for best contrast
+-->
+
+<style>
+.brand-logos-section {
+  padding: clamp(3rem, 6vh, 5rem) 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.brand-logos-label {
+  text-align: center;
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.72);
+  margin-bottom: 2rem;
+}
+.brand-logos-track-wrapper {
+  position: relative;
+  overflow: hidden;
+  /* Fade edges */
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+.brand-logos-track {
+  display: flex;
+  animation: logoScroll 30s linear infinite;
+  width: max-content;
+}
+.brand-logos-track:hover {
+  animation-play-state: paused;
+}
+.brand-logo-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0 clamp(2rem, 4vw, 4rem);
+  flex-shrink: 0;
+  opacity: 0.78;
+  transition: opacity 0.4s ease;
+  cursor: default;
+}
+.brand-logo-item:hover {
+  opacity: 1;
+}
+.brand-logo-item img {
+  height: 40px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  filter: brightness(0) invert(1); /* Forces white logos — remove if logos are already white */
+  opacity: 0.7;
+  transition: opacity 0.4s ease;
+}
+.brand-logo-item:hover img {
+  opacity: 1;
+}
+/* Text-only fallback when no logo image is available */
+.brand-logo-item .logo-text {
+  font-family: var(--font-heading, serif);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.brand-logo-item .logo-name {
+  font-family: var(--font-body, sans-serif);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.72);
+  white-space: nowrap;
+}
+
+@keyframes logoScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Variant: larger logos, no names */
+.brand-logos-track.large .brand-logo-item img {
+  height: 60px;
+  max-width: 160px;
+}
+.brand-logos-track.large .brand-logo-item .logo-name {
+  display: none;
+}
+
+/* Variant: reverse direction */
+.brand-logos-track.reverse {
+  animation-direction: reverse;
+}
+
+/* Variant: two rows (add a second .brand-logos-track-wrapper with .reverse) */
+</style>
+
+<!-- SAMPLE HTML — with logo images -->
+<section class="brand-logos-section">
+  <div class="brand-logos-label">Trusted Brands We Install</div>
+  <div class="brand-logos-track-wrapper">
+    <div class="brand-logos-track">
+      <!-- First set -->
+      <div class="brand-logo-item">
+        <img src="logo-brand-1.png" alt="Andersen">
+        <span class="logo-name">Andersen</span>
+      </div>
+      <div class="brand-logo-item">
+        <img src="logo-brand-2.png" alt="Pella">
+        <span class="logo-name">Pella</span>
+      </div>
+      <div class="brand-logo-item">
+        <img src="logo-brand-3.png" alt="Marvin">
+        <span class="logo-name">Marvin</span>
+      </div>
+      <div class="brand-logo-item">
+        <img src="logo-brand-4.png" alt="Milgard">
+        <span class="logo-name">Milgard</span>
+      </div>
+      <div class="brand-logo-item">
+        <img src="logo-brand-5.png" alt="Therma-Tru">
+        <span class="logo-name">Therma-Tru</span>
+      </div>
+      <!-- Duplicate set for seamless loop -->
+      <div class="brand-logo-item">
+        <img src="logo-brand-1.png" alt="Andersen">
+        <span class="logo-name">Andersen</span>
+      </div>
+      <div class="brand-logo-item">
+        <img src="logo-brand-2.png" alt="Pella">
+        <span class="logo-name">Pella</span>
+      </div>
+      <div class="brand-logo-item">
+        <img src="logo-brand-3.png" alt="Marvin">
+        <span class="logo-name">Marvin</span>
+      </div>
+      <div class="brand-logo-item">
+        <img src="logo-brand-4.png" alt="Milgard">
+        <span class="logo-name">Milgard</span>
+      </div>
+      <div class="brand-logo-item">
+        <img src="logo-brand-5.png" alt="Therma-Tru">
+        <span class="logo-name">Therma-Tru</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SAMPLE HTML — text-only fallback (when no logo images available) -->
+<!--
+<section class="brand-logos-section">
+  <div class="brand-logos-label">Brands We Work With</div>
+  <div class="brand-logos-track-wrapper">
+    <div class="brand-logos-track">
+      <div class="brand-logo-item"><span class="logo-text">Andersen</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Pella</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Marvin</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Milgard</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Therma-Tru</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Andersen</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Pella</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Marvin</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Milgard</span></div>
+      <div class="brand-logo-item"><span class="logo-text">Therma-Tru</span></div>
+    </div>
+  </div>
+</section>
+-->

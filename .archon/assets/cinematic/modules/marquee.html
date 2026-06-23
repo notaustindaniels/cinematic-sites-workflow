@@ -1,0 +1,14 @@
+<!-- CINEMATIC MODULE: Marquee / Text Ticker — Best for: Dividers, brand statements -->
+<style>
+.marquee-band { overflow:hidden; white-space:nowrap; padding:1.5rem 0; border-top:1px solid rgba(255,255,255,0.1); border-bottom:1px solid rgba(255,255,255,0.1); }
+.marquee-track { display:inline-flex; animation:marquee 20s linear infinite; }
+.marquee-band:hover .marquee-track { animation-play-state:paused; }
+.marquee-track span { font-family:var(--font-heading,serif); font-size:clamp(1.5rem,3vw,2.5rem); color:rgba(255,255,255,0.15); padding:0 2rem; }
+.marquee-track .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--color-primary,#c8a97e); margin:0 1.5rem; vertical-align:middle; }
+.marquee-band.outlined .marquee-track span { color:transparent; -webkit-text-stroke:1px rgba(255,255,255,0.2); font-size:clamp(2rem,5vw,4rem); font-weight:700; }
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+</style>
+<div class="marquee-band"><div class="marquee-track">
+  <span>Licensed &amp; Insured <span class="dot"></span></span><span>Quality Workmanship <span class="dot"></span></span><span>On Time <span class="dot"></span></span><span>Locally Owned <span class="dot"></span></span>
+  <span>Licensed &amp; Insured <span class="dot"></span></span><span>Quality Workmanship <span class="dot"></span></span><span>On Time <span class="dot"></span></span><span>Locally Owned <span class="dot"></span></span>
+</div></div>

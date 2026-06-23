@@ -1,0 +1,18 @@
+<!-- CINEMATIC MODULE: Counter Animation — Best for: Stats, social proof -->
+<style>
+.counters-row { display:flex; justify-content:center; gap:clamp(2rem,5vw,6rem); flex-wrap:wrap; padding:6rem 2rem; }
+.counter-item { text-align:center; }
+.counter-number { font-family:var(--font-heading,serif); font-size:clamp(2.5rem,6vw,4.5rem); font-weight:700; color:var(--color-primary,#c8a97e); line-height:1; margin-bottom:0.5rem; }
+.counter-label { font-family:var(--font-body,sans-serif); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.15em; color:rgba(255,255,255,0.5); }
+.counter-divider { width:30px; height:2px; background:var(--color-primary,#c8a97e); margin:0.75rem auto 0; opacity:0.4; }
+</style>
+<div class="counters-row">
+  <div class="counter-item"><div class="counter-number" data-counter data-target="150" data-suffix="+">0</div><div class="counter-label">Projects</div><div class="counter-divider"></div></div>
+  <div class="counter-item"><div class="counter-number" data-counter data-target="12" data-suffix=" yrs">0</div><div class="counter-label">Experience</div><div class="counter-divider"></div></div>
+  <div class="counter-item"><div class="counter-number" data-counter data-target="50000" data-suffix="+">0</div><div class="counter-label">Customers</div><div class="counter-divider"></div></div>
+</div>
+<script>
+function animC(el){const t=parseInt(el.dataset.target);const s=el.dataset.suffix||'';const d=2000;const st=performance.now();function u(n){const p=Math.min((n-st)/d,1);const e=1-Math.pow(1-p,3);el.textContent=Math.floor(e*t).toLocaleString()+s;if(p<1)requestAnimationFrame(u);}requestAnimationFrame(u);}
+const cObs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){animC(x.target);cObs.unobserve(x.target);}});},{threshold:0.5});
+document.querySelectorAll('[data-counter]').forEach(el=>cObs.observe(el));
+</script>

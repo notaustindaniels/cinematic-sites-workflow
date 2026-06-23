@@ -1,0 +1,17 @@
+<!-- CINEMATIC MODULE: SVG Draw Animation — Best for: Logos, decorative reveals -->
+<style>
+.svg-draw-container { position:relative; display:flex; align-items:center; justify-content:center; min-height:60vh; padding:4rem 2rem; }
+.svg-draw-container svg { max-width:500px; width:100%; height:auto; }
+.svg-draw-container svg path,.svg-draw-container svg line,.svg-draw-container svg circle,.svg-draw-container svg polyline { fill:none; stroke:var(--color-primary,#c8a97e); stroke-width:2; stroke-dasharray:var(--pl,1000); stroke-dashoffset:var(--pl,1000); transition:stroke-dashoffset 2s cubic-bezier(0.22,1,0.36,1),fill 0.5s ease 1.8s; }
+.svg-draw-container.in-view svg path,.svg-draw-container.in-view svg line,.svg-draw-container.in-view svg circle,.svg-draw-container.in-view svg polyline { stroke-dashoffset:0; }
+.svg-draw-container.in-view svg .fill-after { fill:var(--color-primary,#c8a97e); fill-opacity:0.1; }
+.svg-draw-container svg *:nth-child(2){transition-delay:0.3s} .svg-draw-container svg *:nth-child(3){transition-delay:0.6s} .svg-draw-container svg *:nth-child(4){transition-delay:0.9s}
+</style>
+<div class="svg-draw-container" data-svg-draw>
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path d="M100 180 Q100 120 100 90" stroke-width="3"/><path d="M100 140 Q80 130 70 110 Q90 120 100 130"/><path d="M100 130 Q120 120 130 100 Q110 115 100 120"/><path class="fill-after" d="M100 90 Q80 60 100 40 Q120 60 100 90"/><circle cx="100" cy="75" r="8" class="fill-after"/></svg>
+</div>
+<script>
+document.querySelectorAll('[data-svg-draw] svg *').forEach(el=>{if(el.getTotalLength){try{const l=el.getTotalLength();el.style.setProperty('--pl',l);el.style.strokeDasharray=l;el.style.strokeDashoffset=l;}catch(e){}}});
+const svgObs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('in-view');});},{threshold:0.3});
+document.querySelectorAll('[data-svg-draw]').forEach(el=>svgObs.observe(el));
+</script>

@@ -1,0 +1,8 @@
+<!-- CINEMATIC MODULE: Scroll Progress — Best for: Long pages -->
+<style>
+.scroll-progress { position:fixed; top:0; left:0; width:0%; height:3px; background:var(--color-primary,#c8a97e); z-index:9999; transition:width 0.1s linear; box-shadow:0 0 10px var(--color-primary,#c8a97e); }
+</style>
+<div class="scroll-progress" id="scrollProgress"></div>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement.scrollHeight-window.innerHeight;const p=document.getElementById('scrollProgress');if(p)p.style.width=(window.scrollY/h*100)+'%';});
+</script>

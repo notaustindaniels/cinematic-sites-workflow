@@ -1,0 +1,202 @@
+/* Design System — vendored from cinematic-site-kit-higgsfield SKILL.md §3C.
+   Renders the 12 design rules as real CSS. Injected inline by assemble-site.ts.
+   :root consumes brand-system vars with dark-first fallbacks; the assembler
+   emits a preceding :root{} block with the real brand values + Google Fonts link. */
+
+/* Brand variables — consumed throughout with fallbacks (Rule 1: dark-first). */
+:root{
+  --color-bg: #0a0a0a;
+  --color-primary: #ffffff;
+  --color-secondary: #cccccc;
+  --color-accent: #e0b15e;
+  --color-text: #f2f2f2;
+  --font-heading: Georgia, 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Reset */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+
+/* Rule 1: Dark-first. Video pops against dark.
+   Rule 4: All text legible — near-white body text on dark (never below 0.7 opacity). */
+body{
+  background:var(--color-bg,#0a0a0a);
+  color:var(--color-text,#f2f2f2);
+  font-family:var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  /* Rule 2: fluid body type */
+  font-size:clamp(1rem,1.2vw,1.25rem);
+  line-height:1.65;
+  font-weight:400;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* Rule 2: Typography uses clamp(). Headings use the brand heading font. */
+h1,h2,h3,h4,h5,h6{
+  font-family:var(--font-heading, Georgia, 'Times New Roman', serif);
+  color:var(--color-text,#ffffff);
+  line-height:1.1;
+  font-weight:700;
+  letter-spacing:-0.01em;
+}
+h1{font-size:clamp(2.5rem,8vw,7rem)}
+h2{font-size:clamp(1.8rem,4vw,3.5rem)}
+h3{font-size:clamp(1.4rem,3vw,2.25rem)}
+p{max-width:65ch}
+
+a{color:var(--color-accent,#e0b15e);text-decoration:none}
+img{max-width:100%;display:block}
+
+/* ----- Rule 6: Nav — fixed/sticky, transparent → solid on scroll. Logo + max 4 links. ----- */
+.site-nav{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.25rem clamp(1.5rem,5vw,4rem);
+  background:transparent;
+  transition:background .35s ease, padding .35s ease, backdrop-filter .35s ease;
+}
+.site-nav.scrolled{
+  background:color-mix(in srgb, var(--color-bg,#0a0a0a) 88%, transparent);
+  backdrop-filter:blur(10px);
+  padding-top:.85rem;padding-bottom:.85rem;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.site-nav .nav-logo{
+  font-family:var(--font-heading, serif);
+  font-weight:700;
+  font-size:1.15rem;
+  color:var(--color-text,#fff);
+  letter-spacing:.02em;
+}
+.site-nav .nav-links{display:flex;gap:clamp(1rem,2.5vw,2.5rem);list-style:none;align-items:center}
+.site-nav .nav-links a{
+  color:var(--color-text,#f2f2f2); /* legible — no faint nav links */
+  font-family:var(--font-body, sans-serif);
+  font-size:.95rem;font-weight:500;
+  opacity:.85;transition:opacity .25s ease;
+}
+.site-nav .nav-links a:hover{opacity:1}
+
+/* ----- Rule 3: Generous section spacing. Rule 7: section rhythm. ----- */
+section{
+  position:relative;
+  padding:clamp(4rem,10vh,8rem) clamp(2rem,5vw,6rem);
+}
+.section-inner{max-width:1200px;margin:0 auto;width:100%}
+.section-eyebrow{
+  display:inline-block;
+  font-family:var(--font-body, sans-serif);
+  text-transform:uppercase;letter-spacing:.18em;
+  font-size:.78rem;font-weight:600;
+  color:var(--color-accent,#e0b15e);
+  margin-bottom:1rem;
+}
+.section-lead{
+  color:var(--color-secondary,#cccccc); /* secondary, still ≥0.7 legible */
+  font-size:clamp(1.05rem,1.6vw,1.4rem);
+  margin-top:1.25rem;
+}
+
+/* ----- Rule 5: Hero text at the bottom of the viewport, inside a gradient scrim. ----- */
+#hero-section{height:300vh;position:relative}
+#hero-section .hero-sticky{position:sticky;top:0;height:100vh;overflow:hidden}
+#hero-canvas{width:100%;height:100%;display:block}
+.hero-overlay{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to top,
+    rgba(0,0,0,0.65) 0%,
+    rgba(0,0,0,0.10) 40%,
+    transparent 70%);
+}
+.hero-content{
+  position:absolute;bottom:0;left:0;right:0;z-index:2;
+  padding:clamp(2rem,5vw,6rem);
+  max-width:1100px;
+}
+.hero-headline{
+  font-family:var(--font-heading, serif);
+  font-size:clamp(2.5rem,8vw,7rem);
+  color:#ffffff;
+  text-shadow:0 2px 30px rgba(0,0,0,.45);
+  line-height:1.02;
+}
+.hero-tagline{
+  margin-top:1rem;
+  font-family:var(--font-body, sans-serif);
+  font-size:clamp(1.1rem,2vw,1.6rem);
+  color:#f0f0f0; /* near-white — Rule 4 */
+  text-shadow:0 2px 20px rgba(0,0,0,.5);
+  max-width:48ch;
+}
+
+/* ----- Buttons (Rule 8: CTA-forward; Rule 12: striking). ----- */
+.btn{
+  display:inline-block;
+  font-family:var(--font-body, sans-serif);
+  font-weight:600;font-size:1rem;
+  padding:.95rem 2.2rem;border-radius:100px;
+  cursor:pointer;border:1px solid transparent;
+  transition:transform .25s ease, box-shadow .25s ease, background .25s ease;
+}
+.btn-primary{
+  background:var(--color-primary,#ffffff);
+  color:var(--color-bg,#0a0a0a);
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.btn-secondary{
+  background:transparent;
+  color:var(--color-text,#fff);
+  border-color:rgba(255,255,255,.35);
+}
+.btn-secondary:hover{border-color:var(--color-accent,#e0b15e);color:var(--color-accent,#e0b15e)}
+
+/* ----- Rule 8: CTA / contact is the LAST section — no scrolling past it. ----- */
+.cta-section{
+  text-align:center;
+  padding-top:clamp(6rem,14vh,10rem);
+  padding-bottom:clamp(6rem,14vh,10rem);
+  background:
+    radial-gradient(120% 120% at 50% 0%,
+      color-mix(in srgb, var(--color-accent,#e0b15e) 14%, transparent) 0%,
+      transparent 55%),
+    var(--color-bg,#0a0a0a);
+}
+.cta-section h2{margin-bottom:1.25rem}
+.cta-section .section-lead{margin-left:auto;margin-right:auto;max-width:50ch}
+
+/* ----- Rule 11: BIDIRECTIONAL scroll animations.
+   Base hidden state + .revealed visible state. The assembler wires an
+   IntersectionObserver that toggles .revealed on BOTH enter and exit
+   (no unobserve), so animations replay in either scroll direction. ----- */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease, transform .7s ease}
+.reveal.revealed{opacity:1;transform:translateY(0)}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition-duration:.001ms !important;animation-duration:.001ms !important}
+  .reveal{opacity:1;transform:none}
+}
+
+/* ----- Rule 9: Mobile responsive — must work at 375px. ----- */
+@media (max-width:768px){
+  body{font-size:1rem;line-height:1.6}
+  section{padding:clamp(3rem,8vh,5rem) 1.25rem}
+  .site-nav{padding:1rem 1.25rem}
+  .site-nav .nav-links{gap:1rem}
+  .site-nav .nav-links a{font-size:.85rem}
+  h1,.hero-headline{font-size:clamp(2.2rem,11vw,3.5rem)}
+  h2{font-size:clamp(1.6rem,7vw,2.4rem)}
+  .hero-content{padding:1.5rem 1.25rem 2rem}
+  .hero-tagline{font-size:1.05rem}
+  p{max-width:100%}
+}
+
+@media (max-width:375px){
+  section{padding:2.5rem 1rem}
+  .site-nav{padding:.85rem 1rem}
+  .hero-content{padding:1.25rem 1rem 1.75rem}
+  .btn{padding:.85rem 1.6rem;font-size:.95rem}
+}

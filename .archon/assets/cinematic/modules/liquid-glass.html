@@ -1,0 +1,26 @@
+<!--
+  CINEMATIC MODULE: Liquid Glass
+  Best for: Modern cards, features, overlays on video/imagery
+  Gives a frosted-glass "Apple Vision Pro" feel.
+-->
+<style>
+.liquid-glass { background:rgba(255,255,255,0.05); backdrop-filter:blur(20px) saturate(1.5); -webkit-backdrop-filter:blur(20px) saturate(1.5); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:clamp(2rem,4vw,3.5rem); position:relative; overflow:hidden; transition:border-color .4s,transform .4s; }
+.liquid-glass:hover { border-color:rgba(255,255,255,0.15); transform:translateY(-4px); }
+.liquid-glass::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent); }
+.liquid-glass::after { content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%; background:radial-gradient(circle at 30% 20%,rgba(255,255,255,0.04) 0%,transparent 50%); pointer-events:none; }
+.glass-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1.5rem; padding:2rem; }
+.liquid-glass h3 { font-family:var(--font-heading,serif); font-size:1.3rem; color:#fff; margin-bottom:.75rem; position:relative; z-index:1; }
+.liquid-glass p { font-family:var(--font-body,sans-serif); font-size:.95rem; color:rgba(255,255,255,0.7); line-height:1.6; position:relative; z-index:1; }
+.liquid-glass .glass-icon { font-size:2rem; margin-bottom:1rem; display:block; position:relative; z-index:1; }
+.liquid-glass .glass-number { font-family:var(--font-heading,serif); font-size:3rem; font-weight:700; color:var(--color-primary,#c8a97e); line-height:1; margin-bottom:.5rem; position:relative; z-index:1; }
+.liquid-glass { opacity:0; transform:translateY(30px); transition:opacity .6s ease,transform .6s ease,border-color .4s; }
+.liquid-glass.in-view { opacity:1; transform:translateY(0); }
+</style>
+<div class="glass-grid">
+  <div class="liquid-glass" data-glass><span class="glass-icon">◆</span><h3>Quality</h3><p>Premium materials and meticulous workmanship on every job.</p></div>
+  <div class="liquid-glass" data-glass><span class="glass-icon">◇</span><h3>Reliability</h3><p>On schedule, on budget, and done right the first time.</p></div>
+  <div class="liquid-glass" data-glass><span class="glass-icon">○</span><h3>Trust</h3><p>Licensed, insured, and backed by a workmanship guarantee.</p></div>
+</div>
+<script>
+const gObs=new IntersectionObserver(e=>{e.forEach((x,i)=>{if(x.isIntersecting){setTimeout(()=>x.target.classList.add('in-view'),i*100);gObs.unobserve(x.target);}});},{threshold:.15});document.querySelectorAll('[data-glass],.liquid-glass').forEach(el=>gObs.observe(el));
+</script>

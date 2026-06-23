@@ -1,65 +1,98 @@
-# Cinematic Sites — Archon Workflow
+# cinematic-site — Archon workflow
 
-An [Archon](https://archon.diy) workflow that runs the **`cinematic-site-kit-higgsfield`**
-Claude skill's 5-step pipeline as a gated, isolated, resumable workflow: turn an existing
-website or a business idea into a cinematic, scroll-animated landing page with an AI-generated
-hero video (Higgsfield — Nano Banana Pro images + Seedance 2.0 Fast video), then build and
-deploy it.
+An Archon workflow that reproduces the **`cinematic-site-kit-higgsfield`** Claude skill — turning a
+website or business idea into a cinematic, scroll-animated landing page with an AI-generated hero video
+(Higgsfield: Nano Banana Pro images + Seedance 2.0 Fast video), then building and deploying it.
 
-## How it maps the skill
-
-Each creative step is an AI node with the relevant skill(s) **injected** (so the skill stays the
-source of truth — the command files just orchestrate and pass artifacts), followed by an
-**approval gate** with `on_reject` rework that stands in for the skill's "PAUSE — wait for
-approval" moments.
-
-```
-preflight (bash)  →  require-higgsfield (cancel if CLI missing)
-  → intake            → ✋ intake-gate     (Step 0 — client intake)
-  → brand-analysis    → ✋ brand-gate      (Step 1 — brand card)
-  → scene-generation  → ✋ scene-gate      (Step 2 — hero/showcase/before-after video)
-  → website-build     → ✋ site-gate       (Step 3 — scroll-animated single-file site)
-  → deploy                                 (Step 4 — Vercel/GitHub or local)
-```
-
-State flows between fresh nodes via `$ARTIFACTS_DIR/` artifacts:
-`intake-brief.md` → `brand/brand-system.md` → `scenes/scene-manifest.md` → `site/` → `deploy-summary.md`.
-
-## Requirements
-
-- `archon` CLI, run from inside this git repo
-- Higgsfield CLI installed **and** signed in (`higgsfield auth login`) — the preflight cancels
-  the run if it's missing; generation needs you authenticated
-- `ffmpeg` (frame extraction / stitching); `gh` + Vercel for deploy (optional — local mode works without)
-- The skills injected by the workflow must be installed under `~/.claude/skills/`:
-  `cinematic-site-kit-higgsfield`, `higgsfield-generate`, `higgsfield-soul-id`,
-  `higgsfield-product-photoshoot`
-
-## Run it
-
-It's an **interactive** workflow (approval gates), so run it in the foreground and approve/reject
-each gate:
-
-```bash
-archon workflow run cinematic-site-higgsfield \
-  --branch cinematic/acme \
-  "Build a cinematic site for Acme Windows & Doors — https://acme.example"
-
-# at each ✋ gate:
-archon workflow approve <run-id> --comment "use hero variant 2"
-archon workflow reject  <run-id> --reason  "warmer palette, name the brands as a logo marquee"
-```
+It is a **decomposed, schema-constrained, critic-verified** pipeline: every point where the original
+skill relied on deep model judgment is externalized into a deterministic script, a fill-in-the-blanks
+template, a rigid `output_format` schema, a verbatim-checklist critic, or a human gate — so a *weak*
+model can match Opus-grade output. See `CINEMATIC-ARCHON-WORKFLOW-PLAN.md` for the full design spec and
+`.archon/BUILD-CONTRACT.md` for the file/interface contract.
 
 ## Layout
 
 ```
 .archon/
-├── config.yaml                              # repo-scoped config
-├── workflows/cinematic-site-higgsfield.yaml # the DAG
-└── commands/
-    ├── cinematic-intake.md
-    ├── cinematic-brand-analysis.md
-    ├── cinematic-scene-generation.md
-    ├── cinematic-website-build.md
-    └── cinematic-deploy.md
+├── config.yaml                     # repo-scoped Archon config
+├── workflows/cinematic-site.yaml   # the 38-node DAG
+├── commands/        (8)            # AI command files (intake, brand, plan, hero prompts, site, deploy)
+├── scripts/        (14 + lib)      # deterministic bun scripts (preflight, hf-image/video, assemble-site, …)
+└── assets/cinematic/
+    ├── scroll-frame-engine.js, design-system.css, showcase-overlay.{css,js}, brand-card-template.html
+    ├── modules/    (18)            # vendored cinematic modules (assembler patches stagger-grid → bidirectional)
+    ├── rubrics/    (8)             # verbatim critic checklists
+    └── templates/  (3)            # NB-Pro keyframe / Seedance 5-layer clip / before-after templates
 ```
+
+## Prerequisites
+
+`higgsfield` (authenticated: `higgsfield auth login`), `ffmpeg`/`ffprobe`, `bun`, `jq`, ImageMagick
+(`magick`/`convert`); `gh` + `vercel` only if deploying to Vercel. `preflight` checks all of these and
+the workflow cancels cleanly with instructions if a required tool is missing.
+
+## Running it
+
+> **Run from a normal shell, not inside Claude Code.** Archon warns that workflows can hang when launched
+> from a nested `CLAUDECODE=1` session. Use `archon serve` or a plain terminal. Suppress the warning with
+> `ARCHON_SUPPRESS_NESTED_CLAUDE_WARNING=1`.
+
+```bash
+# Validate (should be clean):
+archon validate workflows cinematic-site
+archon validate commands
+
+# Full run (isolated worktree). It is INTERACTIVE — it pauses at 7 approval gates
+# (intake, brand, plan, hero, showcase, before/after, site). Approve/reject in chat or via:
+#   archon workflow approve <run-id> [--comment "..."]
+#   archon workflow reject  <run-id>  --reason "use variant 2; door looks morphed"
+archon workflow run cinematic-site --branch cinematic/acme "Cinematic site for Acme Windows in Boulder, CO"
+```
+
+### Dry-run (no credits) — full-engine smoke test
+
+Set `HF_DRY_RUN=1` so `hf-image`/`hf-video` synthesize placeholder assets (via ffmpeg) instead of
+calling the paid API. Add it to the launching shell's env (or temporarily to `.archon/config.yaml`'s
+`env:` block):
+
+```bash
+HF_DRY_RUN=1 archon workflow run cinematic-site --branch cinematic/dryrun "test brief"
+```
+
+This exercises every node, gate, loop, branch, the assembler, and `build-check` end-to-end without
+spending a credit. (The deterministic backbone has already been validated this way — see "Status".)
+
+## Status (what's been verified)
+
+- **L1 — static validation: PASS.** `archon validate workflows cinematic-site` → ok; `archon validate
+  commands` → 61 valid, 0 errors.
+- **L2 — silent-failure audit: PASS.** No AI fields on non-AI nodes; no `retry` on loops; `interactive:
+  true` at workflow level; `none_failed_min_one_success` joins after conditional branches; script
+  timeouts (not idle_timeout); `when:` reads quoted-string enums.
+- **L3 — deterministic dry-run: PASS.** The full DET backbone (preflight → intake-check → brand-card →
+  plan-flatten → hero chain → showcase loop → before/after loop → extract-frames → assemble-site →
+  build-check) runs green with `HF_DRY_RUN=1`, producing a valid 28 KB `index.html` that passes
+  `build-check`.
+- **L4 — live single-asset smoke:** executed during planning (32 credits; verified the `.result_url`
+  parse and fast-mode 720p). See plan §12 L4.
+- **L5 — weak-model parity eval:** the acceptance test — run the full workflow (above) on your weakest
+  target model and score the result against the skill's own checklists. Iterate schema bounds / rubrics /
+  templates until parity. See plan §12 L5.
+
+## Tuning surface (every knob, one place)
+
+| Aspect | Where |
+|---|---|
+| Model per node (cheap glue vs strong planner/critic) | workflow `model:` + per-node `model:` in the YAML |
+| Director's-brief / camera / prompt strictness | the `output_format` schemas in the YAML + the rubrics in `assets/cinematic/rubrics/` |
+| NB-Pro vs Seedance prompt rules | `assets/cinematic/templates/keyframe-template.md` / `clip-template.md` |
+| Hero length / variants / resolution | `plan.json` (via `generation-plan`) + `hf-video.ts` / `hf-image.ts` flags |
+| Modules & industry pairings | `generation-plan` + `site-plan` + `assemble-site.ts` |
+| Brand tokens (color/font/copy) | `brand-system.json` (single source; every module + card reads it) |
+| Scroll heights / design system | `plan.json.scroll_heights` + `assets/cinematic/design-system.css` |
+| Per-item vs per-scene human review | `showcase-loop.interactive` + `gate_message` |
+| Regeneration headroom | `loop.max_iterations`, gate `on_reject.max_attempts` |
+| Deploy target | intake / `plan.json.deploy` |
+| Dry-run (no credits) | `HF_DRY_RUN=1` |
+
+Full catalog: plan §10.

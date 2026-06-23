@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Brand Card — {BUSINESS_NAME}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#0e0e0e;color:#e8e8e8;padding:3rem 1.5rem;line-height:1.6}
+.card{max-width:720px;margin:0 auto;background:#161616;border-radius:20px;overflow:hidden;border:1px solid #2a2a2a}
+.card-header{padding:3rem 2.5rem 2rem;border-bottom:1px solid #2a2a2a}
+.card-header h1{font-family:'DM Serif Display',serif;font-size:2rem;color:#fff;margin-bottom:.5rem}
+.industry-badge{display:inline-block;padding:.3rem .8rem;border-radius:100px;font-size:.75rem;font-weight:500;text-transform:uppercase;letter-spacing:.08em;background:{COLOR_PRIMARY}22;color:{COLOR_PRIMARY};border:1px solid {COLOR_PRIMARY}44}
+.section{padding:2rem 2.5rem;border-bottom:1px solid #2a2a2a}.section:last-child{border-bottom:none}
+.section-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.15em;color:#666;margin-bottom:1rem}
+.palette{display:flex;gap:.75rem;flex-wrap:wrap}
+.swatch{display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.swatch-color{width:64px;height:64px;border-radius:12px;border:2px solid #2a2a2a}
+.swatch-label{font-size:.7rem;color:#888;font-family:monospace}
+.swatch-name{font-size:.65rem;color:#555;text-transform:uppercase;letter-spacing:.05em}
+.type-heading{font-family:{FONT_HEADING};font-size:1.75rem;color:#fff;margin-bottom:.25rem}
+.type-body{font-family:{FONT_BODY};font-size:1rem;color:#aaa}
+.type-meta{font-size:.7rem;color:#555;margin-top:.25rem}
+.copy-block{margin-bottom:1.25rem}
+.copy-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:{COLOR_PRIMARY};margin-bottom:.3rem}
+.copy-text{font-size:1rem;color:#ccc}
+.copy-text.large{font-family:{FONT_HEADING};font-size:1.5rem;color:#fff}
+.mood-pills{display:flex;gap:.5rem;flex-wrap:wrap}
+.mood-pill{padding:.35rem .9rem;border-radius:100px;font-size:.8rem;background:#1e1e1e;color:#aaa;border:1px solid #333}
+.theme-text{font-size:1rem;color:#bbb;line-height:1.7;font-style:italic}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-header"><h1>{BUSINESS_NAME}</h1><span class="industry-badge">{INDUSTRY}</span></div>
+  <div class="section"><div class="section-label">Color Palette</div><div class="palette">
+    <div class="swatch"><div class="swatch-color" style="background:{COLOR_BG}"></div><span class="swatch-label">{COLOR_BG}</span><span class="swatch-name">Background</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:{COLOR_PRIMARY}"></div><span class="swatch-label">{COLOR_PRIMARY}</span><span class="swatch-name">Primary</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:{COLOR_SECONDARY}"></div><span class="swatch-label">{COLOR_SECONDARY}</span><span class="swatch-name">Secondary</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:{COLOR_ACCENT}"></div><span class="swatch-label">{COLOR_ACCENT}</span><span class="swatch-name">Accent</span></div>
+    <div class="swatch"><div class="swatch-color" style="background:{COLOR_TEXT}"></div><span class="swatch-label">{COLOR_TEXT}</span><span class="swatch-name">Text</span></div>
+  </div></div>
+  <div class="section"><div class="section-label">Typography</div>
+    <div class="type-heading">The quick brown fox</div><div class="type-meta">Heading — {FONT_HEADING_NAME}</div><br>
+    <div class="type-body">The quick brown fox jumps over the lazy dog.</div><div class="type-meta">Body — {FONT_BODY_NAME}</div>
+  </div>
+  <div class="section"><div class="section-label">Copy Direction</div>
+    <div class="copy-block"><div class="copy-label">Headline</div><div class="copy-text large">{HEADLINE}</div></div>
+    <div class="copy-block"><div class="copy-label">Tagline</div><div class="copy-text">{TAGLINE}</div></div>
+    <div class="copy-block"><div class="copy-label">Hero Line</div><div class="copy-text">{HERO_LINE}</div></div>
+  </div>
+  <div class="section"><div class="section-label">Theme Direction</div><p class="theme-text">{THEME_DIRECTION}</p></div>
+  <div class="section"><div class="section-label">Mood</div><div class="mood-pills">
+    <span class="mood-pill">{MOOD_1}</span><span class="mood-pill">{MOOD_2}</span><span class="mood-pill">{MOOD_3}</span><span class="mood-pill">{MOOD_4}</span>
+  </div></div>
+</div>
+</body>
+</html>
