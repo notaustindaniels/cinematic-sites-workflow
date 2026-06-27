@@ -21,8 +21,15 @@ This node runs with **fresh context** — load everything from files.
 - If `$ARTIFACTS_DIR/brand/brand-system.json` exists, read it (palette, materials, mood). If
   `$ARTIFACTS_DIR/intake.json` exists, read it (business, the space to showcase). Otherwise derive from the
   brief: $ARGUMENTS
+- **If `$ARTIFACTS_DIR/plan.json` exists with `showcase.scenes[]`** (you are running INSIDE the larger
+  `cinematic-site` build), treat those scenes as your JOURNEY WAYPOINTS: design one panel per scene, in that
+  order, taking each scene's `label` / `start_state` / `end_state` as the space to depict, and honor the global
+  `showcase.lighting` mood if set. You MAY add ONE establishing exterior/approach panel to round the grid to a
+  clean layout. The site's scroll captions are derived from these same scene labels, so your panels MUST depict
+  those spaces in that order. **If there is no plan.json** (you are running standalone) choose the subject space
+  and journey yourself.
 - Choose the **subject space** (e.g. a luxury home) and a **spatial path** through it that reads as one
-  continuous journey. Plan **4 panels** (a 2×2 grid) unless the brief clearly wants fewer/more.
+  continuous journey. Plan **4 panels** (a 2×2 grid) unless the brief — or the plan's scene count — wants fewer/more.
 
 ## Phase 2: FIRST BUILD THE 3D SPACE AND THE PATH IN YOUR HEAD (Hollywood-director mode)
 

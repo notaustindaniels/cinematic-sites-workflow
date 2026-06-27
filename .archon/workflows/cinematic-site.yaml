@@ -8,7 +8,7 @@ description: |
   a hero-video marketing page, or wants to make an existing site "cinematic" with Higgsfield.
   NOT for generic product photos, Remotion videos, or non-cinematic sites.
 provider: claude
-model: sonnet
+model: sonnet              # default tier; per-node overrides below (generation-plan, showcase-director, door-check → opus)
 interactive: true
 thinking: adaptive
 worktree:
@@ -35,7 +35,7 @@ nodes:
 
   - id: warn-credits
     bash: |
-      echo "⚠ Higgsfield credit balance is low ($preflight.output.credits). A full hero + 2-frame showcase run can cost ~120-180 credits. Consider topping up before approving the generation plan."
+      echo "⚠ Higgsfield credit balance is low ($preflight.output.credits). A full hero + grid showcase run can cost ~120-180 credits. Consider topping up before approving the generation plan."
     depends_on: [preflight]
     when: "$preflight.output.credits < '120'"
     trigger_rule: all_done
@@ -395,80 +395,191 @@ nodes:
     depends_on: [hero-validate, brief-critic, prompt-critic]
     trigger_rule: none_failed_min_one_success
 
-  # ════════════════════════════════ F. SHOWCASE (conditional loop) ════════════════════════════════
-  - id: showcase-loop
+  # ════════════════════════════════ F. SHOWCASE — GRID method (conditional) ════════════════════════════════
+  # Seam-free GRID method: an opus Director designs same-style scene panels for ONE storyboard image, that single
+  # image is fed to Seedance, and Seedance renders ONE continuous flythrough (no clips, no stitching, no seams —
+  # so the whole class of seam/state bugs cannot occur). Gated on showcase_enabled; the entire chain skips (and the
+  # downstream extract-frames tolerates the absent video) when the plan did not request a showcase.
+  #
+  # SHARED MODULE — this section MIRRORS the standalone `cinematic-showcase` workflow (.archon/workflows/
+  # cinematic-showcase.yaml), which stays independently runnable and reusable by other workflows. Both wire the
+  # SAME single-source building blocks — commands `showcase-director`/`door-check`, scripts panel-flatten/
+  # compose-grid/gen-flythrough/door-swing/grid-verdict-passed, rubric grid.md — so the LOGIC lives in one place;
+  # only this node wiring is mirrored. Keep the two F-sections in sync when the pipeline structure changes.
+  - id: showcase-director
+    command: showcase-director
     depends_on: [plan-gate]
     when: "$generation-plan.output.showcase_enabled == 'true'"
-    idle_timeout: 1800000
+    context: fresh
+    model: opus
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        style: { type: object }
+        grid:
+          type: object
+          properties:
+            cols: { type: integer, minimum: 1, maximum: 3 }
+            rows: { type: integer, minimum: 1, maximum: 3 }
+          required: [cols, rows]
+        panels:
+          type: array
+          minItems: 2
+          maxItems: 9
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              scene_label: { type: string }
+              composition: { type: string }
+              nb_prompt: { type: string }
+            required: [id, composition, nb_prompt]
+        flythrough_prompt: { type: string }
+        duration: { type: integer, minimum: 4, maximum: 15 }
+      required: [style, grid, panels, flythrough_prompt, duration]
+
+  # AUTO-REVISE LOOP — the Director critiques its OWN spec against rubrics/grid.md (incl. the hard spatial checks:
+  # every turn is a bounded angle + straight-ahead commit, turn direction matches the panel layout, no U-turn into
+  # a seen space) and revises until it self-PASSes, BEFORE any panel is generated.
+  - id: refine-loop
+    depends_on: [showcase-director]
+    idle_timeout: 600000
     loop:
       prompt: |
-        FRESH iteration — no memory of prior iterations. State lives in $ARTIFACTS_DIR/showcase/plan.json.
-        IMPORTANT: every plan-step.ts command MUST be prefixed with `ARTIFACTS_DIR="$ARTIFACTS_DIR"` (the
-        work-item state lives there and your shell does not inherit it) — copy the commands below verbatim.
+        You are the showcase Director acting as your own STRICT critic-and-reviser. Converge the storyboard spec
+        to clean BEFORE any panel is generated. State lives in $ARTIFACTS_DIR/showcase/grid-spec.json and
+        $ARTIFACTS_DIR/showcase/grid-verdict.json. Original brief: $ARGUMENTS
 
-        THE MODEL — the showcase is a 2-keyframe-per-scene CHAIN, ONE continuous flythrough through one space:
-          kf0 ──clip1──► kf1 ──clip2──► kf2 ──clip3──► kf3
-        kf0 is the only fresh image; every later keyframe is an EDIT of the one before it (refs[0]); each clip
-        animates between its two bounding keyframes. The HARD rule on every reveal: REVEAL what is already on
-        screen, NEVER invent a space that wasn't visible in the reference. Same world, same light throughout.
+        1. CRITIQUE — read $ARTIFACTS_DIR/showcase/grid-spec.json and apply the rubric at
+           .archon/assets/cinematic/rubrics/grid.md VERBATIM and strictly. Pay special attention to the HARD
+           spatial checks: every turn is a BOUNDED ANGLE + direction FOLLOWED BY a straight-ahead commit ("turns
+           90 degrees left to face the archway, then continues straight ahead through it"); each turn's named
+           direction MATCHES the panel layout it reveals (cross-check against each panel's composition); no two
+           same-direction turns that U-turn into a space already shown; tight (<500 chars); no rig/aircraft words
+           ("flight/drone/aerial/fly/bank…"); ends on the final reveal (no padding closing). Write your honest
+           verdict {verdict,reasons[],fixes[]} to $ARTIFACTS_DIR/showcase/grid-verdict.json.
+        2. REVISE — if the verdict is FAIL, edit $ARTIFACTS_DIR/showcase/grid-spec.json to fix EVERY reason.
+           Where a turn can't be both correct (matching its panel) AND paradox-free, RESTRUCTURE the path:
+           re-order panels, route through a doorway, or use a level change — and update the affected panels'
+           nb_prompt/composition to match. Keep every other rule satisfied. Then re-write grid-verdict.json for
+           the REVISED spec.
+        3. SIGNAL — only if the spec now genuinely PASSes every check, output <promise>SPEC_OK</promise>.
+           Otherwise end your turn and you will iterate again.
+        Do NOT generate any images. Only read/edit grid-spec.json and grid-verdict.json.
+      until: SPEC_OK
+      max_iterations: 5
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/grid-verdict-passed.ts'
 
-        1. Get the next pending work-item:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next showcase
-           If it prints NONE, output <promise>SHOWCASE_DONE</promise> and stop.
-        2. Parse the item JSON. Fields: id, type [keyframe|clip], prompt_role [establish|reveal|clip], refs[],
-           out, scene_label, depicts, evolves_from, seeds_next, lighting, camera, from_state, to_state,
-           duration, context_notes. ALWAYS honor context_notes — it spells out the continuity for this item.
-        3. Compose the generation prompt:
-           - type == keyframe -> follow .archon/assets/cinematic/templates/keyframe-template.md EXACTLY.
-             * prompt_role == "establish" (kf0, refs[] empty): write a FRESH, hyper-specific NB-Pro prompt for
-               `depicts` (template §A) — 16:9, named angle, dense materials, set the `lighting` mood, and SEED
-               what the first scene moves toward. No reference image.
-             * prompt_role == "reveal" (refs[0] = the prior keyframe): write an NB-Pro EDIT that leads with
-               "Edit the reference image so that …" (template §B). Evolve `evolves_from` into `depicts`. THE
-               HARD RULE: everything new must already be visible/implied in the reference — reveal it, never
-               invent. Geometry-not-labels for any mechanism, never the word "dark", negate the wrong open-mode,
-               name the concrete content, keep `seeds_next` visible, and keep the world + light identical to the
-               reference (do NOT re-specify a different mood — it inherits the light for free).
-           - type == clip -> follow .archon/assets/cinematic/templates/clip-template.md EXACTLY (Seedance
-             5-layer). Animate `from_state` (refs[0]) → `to_state` (refs[1]) with the director's `camera` intent.
-             Use the mechanism form if a mechanism actuates, or the pure-traversal form if it's a camera move.
-           Read brand at $ARTIFACTS_DIR/brand/brand-system.json for palette/voice. Write the composed prompt to
-           $ARTIFACTS_DIR/showcase/<id>.prompt.txt
-        4. Generate (keyframes at 2k — the skill's resolution for showcase frames; the assembler upscales later):
-           - establish keyframe (refs[] empty): bun .archon/scripts/hf-image.ts --prompt-file <promptfile> --out <out> --resolution 2k
-           - reveal keyframe (refs[0] = prior kf):  bun .archon/scripts/hf-image.ts --prompt-file <promptfile> --out <out> --image <refs[0]> --resolution 2k
-           - clip (refs = [start kf, end kf]):       bun .archon/scripts/hf-video.ts --prompt-file <promptfile> --out <out> --start-image <refs[0]> --end-image <refs[1]> --duration <duration>
-             ALWAYS pass BOTH --start-image and --end-image — that is what keeps Seedance from hallucinating.
-        5. Critique the RESULT PROMPT against the matching rubric (.archon/assets/cinematic/rubrics/keyframe.md
-           for keyframes, clip.md for clips). If it FAILS and you have budget, fix the prompt and regenerate the
-           SAME item. If it PASSES and the output file exists, mark done:
+  - id: panel-flatten
+    script: panel-flatten
+    runtime: bun
+    depends_on: [refine-loop]   # panels only generate AFTER the spec converges to PASS
+    timeout: 30000
+
+  - id: panel-gen
+    depends_on: [panel-flatten]
+    idle_timeout: 1200000
+    loop:
+      prompt: |
+        FRESH iteration — no memory. State lives in $ARTIFACTS_DIR/showcase/plan.json. The panel prompts were
+        ALREADY WRITTEN by the Director — you do NOT write, improve, or change any prompt. You ONLY execute.
+        IMPORTANT: every plan-step.ts call MUST be prefixed `ARTIFACTS_DIR="$ARTIFACTS_DIR"` — copy verbatim.
+
+        1. Next panel:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next showcase
+           If it prints NONE → output <promise>PANELS_DONE</promise> and stop.
+        2. Parse the item JSON: id, refs[], out, prompt, scene_label.
+        3. Write the item's prompt VERBATIM to $ARTIFACTS_DIR/showcase/<id>.prompt.txt — do NOT edit it.
+        4. Generate the panel (Nano Banana Pro, 2k):
+           - with a ref (style anchor):  bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --image <refs[0]> --resolution 2k
+           - first panel (no ref):       bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --resolution 2k
+        5. If the output image exists, mark done:
              ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --mark-done showcase <id>
-           If generation ERRORED (transient Higgsfield failure), do NOT mark done — end your turn so it retries
-           next iteration (a clip failure must never nuke the chain; already-generated frames are kept).
-        6. Do exactly ONE work-item per iteration, then end your turn.
-      until: SHOWCASE_DONE
-      max_iterations: 60
+           If generation errored transiently, do NOT mark done — end the turn so it retries next iteration.
+        6. Do exactly ONE panel per iteration, then end your turn.
+      until: PANELS_DONE
+      max_iterations: 24
       fresh_context: true
       until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done showcase'
 
-  - id: showcase-stitch
-    script: showcase-stitch
+  - id: compose-grid
+    script: compose-grid
     runtime: bun
-    depends_on: [showcase-loop]
-    timeout: 300000
+    depends_on: [panel-gen]
+    timeout: 120000
+
+  # DOOR — OBSERVE (vision) + COMPUTE (code). The AI node ONLY reports which side the handle is on; door-swing.ts
+  # computes hinge = opposite handle, swing = hinge side, and rewrites the door clause deterministically.
+  - id: door-check
+    command: door-check
+    depends_on: [compose-grid]
+    context: fresh
+    model: opus
+    allowed_tools: [Read, Write]
+    output_format:
+      type: object
+      properties:
+        hinged_door: { type: string, enum: [yes, no] }
+        door_panel: { type: string }
+        single_or_double: { type: string, enum: [single, double, n/a] }
+        handle_side: { type: string, enum: [left, right, unclear, n/a] }
+      required: [hinged_door, handle_side]
+
+  - id: door-swing
+    script: door-swing
+    runtime: bun
+    depends_on: [door-check]
+    timeout: 20000
+
+  # GATE: review the composited grid BEFORE the paid Seedance render.
+  - id: grid-gate
+    approval:
+      message: |
+        STEP 2 (SHOWCASE GRID) — this single image is what gets fed to Seedance (review BEFORE the paid render).
+        Open $ARTIFACTS_DIR/scenes/showcase-grid/grid.png — the panels should read as ONE space, one light,
+        distinct vantages in journey order, each badged with its scene number. The Seedance flythrough prompt is
+        grid-spec.json.flythrough_prompt (already converged to a PASS verdict via the auto-revise loop), and the
+        door-swing step has set the single-door swing DETERMINISTICALLY from the observed handle side. Approve to
+        render the flythrough, or reject naming the panel(s) to regenerate.
+      capture_response: true
+      on_reject:
+        prompt: |
+          For the panels named in this feedback: $REJECTION_REASON — reset their status to "pending" in
+          $ARTIFACTS_DIR/showcase/plan.json (and, if the prompt itself needs changing, edit that panel's
+          nb_prompt in $ARTIFACTS_DIR/showcase/grid-spec.json then re-run `bun .archon/scripts/panel-flatten.ts`).
+          Regenerate the reset panel(s) via `bun .archon/scripts/hf-image.ts` using their pre-written prompt,
+          then re-run `bun .archon/scripts/compose-grid.ts` to rebuild the grid.
+        max_attempts: 5
+    depends_on: [compose-grid, door-swing]
+
+  # THE ONE SEEDANCE CALL — grid in, continuous flythrough out, to scenes/showcase/showcase-video.mp4.
+  - id: gen-flythrough
+    script: gen-flythrough
+    runtime: bun
+    depends_on: [grid-gate]
+    timeout: 1500000   # one Seedance render (up to ~20m internal wait)
+    retry:
+      max_attempts: 2
+      delay_ms: 8000
 
   - id: showcase-gate
     approval:
       message: |
-        STEP 2 (SHOWCASE) — Review the stitched showcase video and per-scene clips in
-        $ARTIFACTS_DIR/scenes/showcase/. Approve, or reject naming the scene/clip + issue to regenerate.
+        STEP 2 (SHOWCASE) — the single continuous flythrough at
+        $ARTIFACTS_DIR/scenes/showcase/showcase-video.mp4 (one Seedance render from the grid — no seams). Watch
+        it: it should travel through the spaces in order as one continuous cinematic move. Approve, or reject to
+        re-render (tweak the flythrough prompt in grid-spec.json — keeping it duration-free — or regenerate a
+        panel + re-compose the grid first).
       capture_response: true
       on_reject:
         prompt: |
-          For the items called out in this feedback: $REJECTION_REASON — reset their status to "pending"
-          in $ARTIFACTS_DIR/showcase/plan.json, regenerate them via the hf-image.ts / hf-video.ts scripts
-          following the keyframe/clip templates, then re-run `bun .archon/scripts/showcase-stitch.ts`.
+          Address this feedback: $REJECTION_REASON. If it's the camera/journey, edit
+          $ARTIFACTS_DIR/showcase/grid-spec.json flythrough_prompt (NEVER add a duration/timestamp to it) and
+          re-run `bun .archon/scripts/gen-flythrough.ts`. If a panel is wrong, reset it in plan.json, regenerate
+          via hf-image.ts, re-run `bun .archon/scripts/compose-grid.ts`, then `bun .archon/scripts/gen-flythrough.ts`.
         max_attempts: 4
-    depends_on: [showcase-stitch]
+    depends_on: [gen-flythrough]
 
   # ════════════════════════════════ G. BEFORE / AFTER (conditional loop) ════════════════════════════════
   - id: beforeafter-loop

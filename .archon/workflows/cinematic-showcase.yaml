@@ -1,0 +1,221 @@
+name: cinematic-showcase
+description: |
+  Cinematic SHOWCASE flythrough via the GRID method (showcase section only). One opus Director designs N
+  same-style scene panels + a single Seedance flythrough prompt; the panels are composited into ONE storyboard
+  grid image, and that single image is fed to Seedance, which renders ONE continuous 15s video through the
+  depicted spaces. No clips, no stitching, no seams — so the whole class of seam/state bugs cannot occur.
+  Use to generate a standalone multi-scene cinematic flythrough for a space (e.g. a luxury home tour).
+  NOT the full cinematic-site build (intake/brand/hero/site/deploy) — this is the showcase only.
+provider: claude
+model: sonnet
+interactive: true
+thinking: adaptive
+worktree:
+  enabled: false  # in-place (untracked build)
+
+nodes:
+  # ──────────────────────────── PREFLIGHT ────────────────────────────
+  - id: preflight
+    script: preflight
+    runtime: bun
+    timeout: 90000
+
+  - id: require-higgsfield
+    cancel: "Higgsfield CLI not found or not authenticated. Install it and run `higgsfield auth login`, then re-run."
+    depends_on: [preflight]
+    when: "$preflight.output.higgsfield == 'false'"
+
+  - id: require-imagemagick
+    cancel: "ImageMagick (magick) is required to composite the storyboard grid. Install it (brew install imagemagick) and re-run."
+    depends_on: [preflight]
+    when: "$preflight.output.imagemagick == 'false'"
+
+  # ──────────────────────────── DIRECTOR (the grid spec) ────────────────────────────
+  - id: showcase-director
+    command: showcase-director
+    depends_on: [preflight]
+    when: "$preflight.output.higgsfield == 'true'"
+    context: fresh
+    model: opus
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        style: { type: object }
+        grid:
+          type: object
+          properties:
+            cols: { type: integer, minimum: 1, maximum: 3 }
+            rows: { type: integer, minimum: 1, maximum: 3 }
+          required: [cols, rows]
+        panels:
+          type: array
+          minItems: 2
+          maxItems: 9
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              scene_label: { type: string }
+              composition: { type: string }
+              nb_prompt: { type: string }
+            required: [id, composition, nb_prompt]
+        flythrough_prompt: { type: string }
+        duration: { type: integer, minimum: 4, maximum: 15 }
+      required: [style, grid, panels, flythrough_prompt, duration]
+
+  # AUTO-REVISE LOOP — the Director critiques its OWN spec against rubrics/grid.md and revises until it PASSes,
+  # BEFORE any panel is generated. The critic produces specific feedback (e.g. "kitchen is on the right but the
+  # prompt turns left; fixing to right would U-turn — restructure the path"); the loop feeds that back into a
+  # revision and re-critiques, converging to a clean spec with no human gate-bouncing. (Runs on the workflow
+  # model — sonnet already demonstrated it can apply the turn-vs-layout / U-turn checks.)
+  - id: refine-loop
+    depends_on: [showcase-director]
+    idle_timeout: 600000
+    loop:
+      prompt: |
+        You are the showcase Director acting as your own STRICT critic-and-reviser. Converge the storyboard spec
+        to clean BEFORE any panel is generated. State lives in $ARTIFACTS_DIR/showcase/grid-spec.json and
+        $ARTIFACTS_DIR/showcase/grid-verdict.json. Original brief: $ARGUMENTS
+
+        1. CRITIQUE — read $ARTIFACTS_DIR/showcase/grid-spec.json and apply the rubric at
+           .archon/assets/cinematic/rubrics/grid.md VERBATIM and strictly. Pay special attention to the HARD
+           spatial checks: every turn names a HORIZONTAL direction (incl. the turn before a vertical move); each
+           turn's named direction MATCHES the panel layout it reveals (cross-check against each panel's
+           composition); no two same-direction turns that U-turn into a space already shown; tight (<500 chars);
+           no rig/aircraft words ("flight/drone/aerial/fly…"); ends on the final reveal (no padding closing).
+           Write your honest verdict {verdict,reasons[],fixes[]} to $ARTIFACTS_DIR/showcase/grid-verdict.json.
+        2. REVISE — if the verdict is FAIL, edit $ARTIFACTS_DIR/showcase/grid-spec.json to fix EVERY reason.
+           Where a turn can't be both correct (matching its panel) AND paradox-free, RESTRUCTURE the path:
+           re-order panels, route through a doorway, or use a level change — and update the affected panels'
+           nb_prompt/composition to match. Keep every other rule satisfied. Then re-write grid-verdict.json for
+           the REVISED spec.
+        3. SIGNAL — only if the spec now genuinely PASSes every check, output <promise>SPEC_OK</promise>.
+           Otherwise end your turn and you will iterate again.
+        Do NOT generate any images. Only read/edit grid-spec.json and grid-verdict.json.
+      until: SPEC_OK
+      max_iterations: 5
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/grid-verdict-passed.ts'
+
+  # ──────────────────────────── GENERATE PANELS → COMPOSE GRID ────────────────────────────
+  - id: panel-flatten
+    script: panel-flatten
+    runtime: bun
+    depends_on: [refine-loop]   # panels only generate AFTER the spec converges to PASS
+    timeout: 30000
+
+  - id: panel-gen
+    depends_on: [panel-flatten]
+    idle_timeout: 1200000
+    loop:
+      prompt: |
+        FRESH iteration — no memory. State lives in $ARTIFACTS_DIR/showcase/plan.json. The panel prompts were
+        ALREADY WRITTEN by the Director — you do NOT write, improve, or change any prompt. You ONLY execute.
+        IMPORTANT: every plan-step.ts call MUST be prefixed `ARTIFACTS_DIR="$ARTIFACTS_DIR"` — copy verbatim.
+
+        1. Next panel:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next showcase
+           If it prints NONE → output <promise>PANELS_DONE</promise> and stop.
+        2. Parse the item JSON: id, refs[], out, prompt, scene_label.
+        3. Write the item's prompt VERBATIM to $ARTIFACTS_DIR/showcase/<id>.prompt.txt — do NOT edit it.
+        4. Generate the panel (Nano Banana Pro, 2k):
+           - with a ref (style anchor):  bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --image <refs[0]> --resolution 2k
+           - first panel (no ref):       bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --resolution 2k
+        5. If the output image exists, mark done:
+             ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --mark-done showcase <id>
+           If generation errored transiently, do NOT mark done — end the turn so it retries next iteration.
+        6. Do exactly ONE panel per iteration, then end your turn.
+      until: PANELS_DONE
+      max_iterations: 24
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done showcase'
+
+  - id: compose-grid
+    script: compose-grid
+    runtime: bun
+    depends_on: [panel-gen]
+    timeout: 120000
+
+  # DOOR — split into OBSERVE (vision) + COMPUTE (code). The model kept getting the hinge/swing geometry
+  # backwards, so the AI node now ONLY reports which side the handle is on, and the deterministic door-swing
+  # script computes hinge = opposite handle, swing = hinge side, and rewrites the door clause. (Prevents both
+  # the double-door hallucination and the wrong-swing bug.)
+  - id: door-check
+    command: door-check
+    depends_on: [compose-grid]
+    context: fresh
+    model: opus
+    allowed_tools: [Read, Write]
+    output_format:
+      type: object
+      properties:
+        hinged_door: { type: string, enum: [yes, no] }
+        door_panel: { type: string }
+        single_or_double: { type: string, enum: [single, double, n/a] }
+        handle_side: { type: string, enum: [left, right, unclear, n/a] }
+      required: [hinged_door, handle_side]
+
+  - id: door-swing
+    script: door-swing
+    runtime: bun
+    depends_on: [door-check]
+    timeout: 20000
+
+  # ──────────────────────────── GATE: review the grid BEFORE the Seedance spend ────────────────────────────
+  - id: grid-gate
+    approval:
+      message: |
+        STORYBOARD GRID — this single image is what gets fed to Seedance (review BEFORE the paid render).
+        Open $ARTIFACTS_DIR/scenes/showcase-grid/grid.png — the panels should read as ONE house, one light,
+        distinct vantages in journey order. The Seedance flythrough prompt is grid-spec.json.flythrough_prompt
+        (the spec already converged to a PASS verdict in $ARTIFACTS_DIR/showcase/grid-verdict.json via the
+        auto-revise loop) — and the door-swing step has set the single-door swing DETERMINISTICALLY from the
+        observed handle side (hinge = opposite handle; swing = hinge side). Approve to render the 15s flythrough,
+        or reject naming the panel(s) to regenerate.
+      capture_response: true
+      on_reject:
+        prompt: |
+          For the panels named in this feedback: $REJECTION_REASON — reset their status to "pending" in
+          $ARTIFACTS_DIR/showcase/plan.json (and, if the prompt itself needs changing, edit that panel's
+          nb_prompt in $ARTIFACTS_DIR/showcase/grid-spec.json then re-run `bun .archon/scripts/panel-flatten.ts`).
+          Regenerate the reset panel(s) via `bun .archon/scripts/hf-image.ts` using their pre-written prompt,
+          then re-run `bun .archon/scripts/compose-grid.ts` to rebuild the grid.
+        max_attempts: 5
+    depends_on: [compose-grid, door-swing]
+
+  # ──────────────────────────── THE ONE SEEDANCE CALL ────────────────────────────
+  - id: gen-flythrough
+    script: gen-flythrough
+    runtime: bun
+    depends_on: [grid-gate]
+    timeout: 1500000   # one Seedance render (up to ~20m internal wait)
+    retry:
+      max_attempts: 2
+      delay_ms: 8000
+
+  - id: showcase-gate
+    approval:
+      message: |
+        SHOWCASE — the single continuous flythrough at $ARTIFACTS_DIR/scenes/showcase/showcase-video.mp4
+        (one Seedance render from the grid — no seams). Watch it: it should travel through the spaces in order
+        as one continuous cinematic move. Approve, or reject to re-render (tweak the flythrough prompt in
+        grid-spec.json — keeping it duration-free — or regenerate a panel + re-compose the grid first).
+      capture_response: true
+      on_reject:
+        prompt: |
+          Address this feedback: $REJECTION_REASON. If it's the camera/journey, edit
+          $ARTIFACTS_DIR/showcase/grid-spec.json flythrough_prompt (NEVER add a duration/timestamp to it) and
+          re-run `bun .archon/scripts/gen-flythrough.ts`. If a panel is wrong, reset it in plan.json, regenerate
+          via hf-image.ts, re-run `bun .archon/scripts/compose-grid.ts`, then `bun .archon/scripts/gen-flythrough.ts`.
+        max_attempts: 4
+    depends_on: [gen-flythrough]
+
+  - id: report
+    bash: |
+      echo "===================== CINEMATIC SHOWCASE (GRID) — DELIVERY ====================="
+      echo "Flythrough video: $ARTIFACTS_DIR/scenes/showcase/showcase-video.mp4"
+      echo "Storyboard grid:  $ARTIFACTS_DIR/scenes/showcase-grid/grid.png"
+      echo "Grid spec:        $ARTIFACTS_DIR/showcase/grid-spec.json"
+      echo "==============================================================================="
+    depends_on: [showcase-gate]
+    trigger_rule: all_done
