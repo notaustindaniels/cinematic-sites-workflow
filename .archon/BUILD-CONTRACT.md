@@ -36,8 +36,8 @@ Higgsfield CLI §8). Where the plan and this contract disagree on an **interface
 
 ## Higgsfield CLI (pinned — see plan §8; do not change flags)
 
-- Image (Nano Banana Pro): `higgsfield generate create nano_banana_2 --prompt "P" --aspect_ratio 16:9
-  --resolution 2k|4k [--image REF ...] --json --wait --wait-timeout 8m --wait-interval 5s`
+- Image (Flux.2 Pro): `higgsfield generate create flux_2 --model pro --prompt "P" --aspect_ratio 16:9
+  --resolution 1k|2k [--image REF ...] --json --wait --wait-timeout 8m --wait-interval 5s`
 - Video (Seedance 2.0 Fast): `higgsfield generate create seedance_2_0 --mode fast --prompt "P"
   --start-image S [--end-image E] --duration N --aspect_ratio 16:9 --resolution 720p
   --generate_audio false --json --wait --wait-timeout 20m --wait-interval 5s`

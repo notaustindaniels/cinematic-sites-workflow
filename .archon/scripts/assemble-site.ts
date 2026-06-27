@@ -508,6 +508,7 @@ function buildNav(brandName: string, navLinks: string[]): string {
     .join("");
   return `<nav class="site-nav" id="siteNav">
   <div class="nav-logo">${esc(brandName)}</div>
+  <button class="nav-hamburger" id="navToggle" aria-label="Menu" aria-expanded="false">&#9776;</button>
   <ul class="nav-links">${links}</ul>
 </nav>`;
 }
@@ -545,12 +546,22 @@ const REVEAL_OBSERVER = `(function(){
   revealEls.forEach(function(el){ ro.observe(el); });
 })();`;
 
-// Nav solid-on-scroll behavior.
+// Nav solid-on-scroll + hamburger toggle behavior.
 const NAV_SCROLL = `(function(){
   var nav = document.getElementById('siteNav');
   if(!nav) return;
   function upd(){ nav.classList.toggle('scrolled', window.scrollY > 40); }
   window.addEventListener('scroll', upd, {passive:true}); upd();
+  var toggle = document.getElementById('navToggle');
+  if(toggle){
+    toggle.addEventListener('click',function(){
+      var open = nav.classList.toggle('nav-open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    nav.querySelectorAll('.nav-links a').forEach(function(a){
+      a.addEventListener('click',function(){ nav.classList.remove('nav-open'); toggle.setAttribute('aria-expanded','false'); });
+    });
+  }
 })();`;
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -44,8 +44,8 @@ Return the node's `output_format` JSON with EXACTLY these fields:
 - `camera_path` — string (the travel THROUGH space, with direction/distance/motion type)
 - `camera_end` — string (the final framing at the hero moment)
 - `transforms` — array of strings, **≥2** (the concrete physical changes during the journey)
-- `start_frame_prompt` — string (NB-Pro prompt for the start frame: reuse/refine the reference; if `needs_new_start_frame` is true, a full new 16:9 prompt)
-- `end_frame_prompt` — string (NB-Pro edit prompt: "Create an image exactly like this reference, but [the hero-moment change]. Same style, same composition, same lighting." — used only if `want_end_frame` is true)
+- `start_frame_prompt` — string (Flux.2 Pro prompt for the start frame: reuse/refine the reference; if `needs_new_start_frame` is true, a full new 16:9 prompt)
+- `end_frame_prompt` — string (Flux.2 Pro edit prompt: "Create an image exactly like this reference, but [the hero-moment change]. Same style, same composition, same lighting." — used only if `want_end_frame` is true)
 - `want_end_frame` — `'true'`|`'false'` (string)
 - `needs_new_start_frame` — `'true'`|`'false'` (string)
 

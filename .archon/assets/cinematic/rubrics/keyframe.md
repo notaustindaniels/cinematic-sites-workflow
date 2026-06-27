@@ -1,4 +1,4 @@
-# Rubric C.6 — NB-Pro Keyframe Prompt Critic (2-frame showcase chain)
+# Rubric C.6 — Flux.2 Pro Keyframe Prompt Critic (2-frame showcase chain)
 
 The critic reads the keyframe **prompt text** for the current work-item, then emits `{verdict, reasons[], fixes[]}`.
 
@@ -25,14 +25,14 @@ Apply every applicable item. Any FAIL item fails the verdict.
   with NO such grounding — i.e. it reads as conjuring a brand-new place the reference never showed — that is an
   INVENTED space and is **FAIL**. (This is the single most important check.)
 - [ ] **Leads as an edit.** A `reveal` keyframe prompt should lead with "Edit the reference image so that …"
-  (or equivalent) so NB-Pro modifies the reference rather than re-imagining the scene. A reveal prompt that
+  (or equivalent) so Flux.2 Pro modifies the reference rather than re-imagining the scene. A reveal prompt that
   reads as a fresh from-scratch composition is FAIL.
 
 ### Preserve the world, inherit the light (applies to every `reveal` keyframe)
 
 - [ ] **Has an everything-else-identical clause.** The prompt must explicitly instruct that the unchanged
   elements stay — materials, architecture, landscaping, sky, and lighting "exactly matching the reference".
-  Missing this clause is FAIL (without it NB-Pro re-randomizes elements that should be constant).
+  Missing this clause is FAIL (without it Flux.2 Pro re-randomizes elements that should be constant).
 - [ ] **Does not reset the time-of-day / mood.** The prompt must NOT re-specify a different lighting mood or
   time of day than the reference (the edit inherits it for free). Introducing a new/contradicting mood
   mid-chain — e.g. the reference is dusk and the prompt asks for bright afternoon — is FAIL. (Restating the
@@ -45,7 +45,7 @@ Skip this whole section for a pure camera-advance reveal (no mechanism) and for 
 - [ ] **Geometry, not labels.** Describes the resulting physical geometry of the open state, NOT an action verb.
   "the bottom half of the window's frame is now an open rectangular gap — no glass" is PASS; "open the left
   window" / "the door is open" is FAIL.
-- [ ] **Never uses "dark" for the opening.** The word "dark" applied to a gap/opening makes NB-Pro render a
+- [ ] **Never uses "dark" for the opening.** The word "dark" applied to a gap/opening makes Flux.2 Pro render a
   pitch-black void that erases the interior. Any use of "dark" to characterize the opening is FAIL.
 - [ ] **Names the concrete content visible through the opening.** 3+ specific named items (materials,
   furniture, an architectural feature), the last of which seeds the next scene. "the warm interior" with no
@@ -53,6 +53,11 @@ Skip this whole section for a pure camera-advance reveal (no mechanism) and for 
 - [ ] **Negates the wrong open-mode explicitly.** A sentence that names, by physical description, the wrong mode
   that must NOT happen (pivot → "not side-hinged, does not slide"; single-hung → "does not tilt, is not a
   casement"). Missing this negation is FAIL.
+- [ ] **Orientation is locked to the reference (stops the WRONG-SIDE door).** The prompt must state which
+  edge/axis the part hinges or pivots on AND which direction it travels — matching the reference image (where
+  the handle/hinge/track is) — and negate the mirror image. A prompt that locks only the *mode* (pivot vs
+  hinge) but leaves the *side/direction* unspecified, so the element could open from either side, is **FAIL**.
+  This is the check that catches a door opening from the wrong side; quote the missing side/direction in the fix.
 
 ### Establishing-frame check (apply ONLY when `prompt_role == "establish"`)
 

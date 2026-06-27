@@ -53,10 +53,10 @@ The camera [CAMERA MOTION — e.g., "pushes in slowly and steadily", "barely mov
 
 | Slot | What to write | Common mistakes |
 |---|---|---|
-| `EVENT CATEGORY` | Product terminology that primes Seedance's motion prior — the **opposite** of NB-Pro rules. Use the label. | "a window opening" (too vague — add the mechanism type: "awning window") |
-| `GEOMETRY + MAGNITUDE` | Where the motion occurs on the element and how far, bounded by a qualifier ("a few inches", "about halfway", "40 degrees"). | "opens wider" / "extends" (no magnitude bound → chaotic output) |
+| `EVENT CATEGORY` | Product terminology that primes Seedance's motion prior — the **opposite** of Flux.2 Pro rules. Use the label. | "a window opening" (too vague — add the mechanism type: "awning window") |
+| `GEOMETRY + MAGNITUDE` | Where the motion occurs, **which direction it travels**, and how far — bounded ("the right leading edge swings open toward the viewer about 80 degrees", "the lower sash slides up about halfway"). The DIRECTION must match the reference/end-keyframe, not the model's guess. | "opens wider" / "extends" (no bound) — or omitting the direction so the door opens from the wrong side |
 | `PACING` | Speed of the animated mechanism element (not the camera). "slow consistent speed" is the most reliable phrase. | Describing camera pacing here instead of mechanism pacing |
-| `PHYSICS REASON` | The physical constraint that makes this motion possible: hinge location, track type, anchor point. Must be a *because* clause, not a bare prohibition. | "the top does not move" (no *because* → the model can override a bare command) |
+| `PHYSICS REASON` | The physical constraint that makes this motion possible AND fixes its orientation: name the **hinge/pivot side or axis from the reference** ("because it is pivoted on the left-third vertical axis", "because it's hinged from the top"), the track type, the anchor point. Must be a *because* clause. Naming the hinge SIDE is what keeps Seedance from flipping the door. | "the top does not move" (no *because*); or a *because* that omits which side the hinge is on |
 | `CAMERA MOTION` | For mechanism-only clips: "barely moves" or "drifts forward a few inches." For traversal clips: describe the actual movement. Camera is always last. | Putting camera first, or describing camera motion in multiple layers |
 
 ---
@@ -98,9 +98,10 @@ The camera eases to a gentle hover with the craftsman front facade filling the f
 ## Rules summary (do not deviate)
 
 1. **Exactly 5 sentences, in this order.** Any missing, extra, or reordered layer fails the clip critic.
-2. **Layer 1 uses product-category terminology.** This is the opposite of the NB-Pro keyframe rule. Seedance NEEDS the label; NB-Pro hides from it.
+2. **Layer 1 uses product-category terminology.** This is the opposite of the Flux.2 Pro keyframe rule. Seedance NEEDS the label; Flux.2 Pro hides from it.
 3. **Layer 2 bounds the magnitude.** Vague magnitude ("opens", "widens") produces chaotic output.
 4. **Layer 4 must include a *because* clause.** A bare constraint without a physical reason can be overridden by the model.
 5. **Camera is always Layer 5 — never first.** For mechanism clips, the camera "barely moves" or "drifts." For traversal clips, describe the actual movement — but always as the final layer.
 6. **One mechanism only.** If the brief has more than one thing happening, it is two clips.
 7. **No second-by-second timelines.** Do not add `t=0s`, `t=2s` style beats to Seedance clip prompts. That format is for the hero video only and causes Seedance to hallucinate staged sequences.
+8. **Lock the orientation.** Layer 2 must state which direction the part travels and Layer 4 must name which edge/axis it is hinged/pivoted on — both read from the reference and the end keyframe. Without this, Seedance picks a side and the door opens from the wrong one. This is the single most common showcase defect; never leave the side/direction unstated.

@@ -1,5 +1,9 @@
 #!/usr/bin/env bun
-// hf-image.ts — pinned Nano Banana Pro (nano_banana_2) image generation.
+// hf-image.ts — pinned Flux.2 Pro (flux_2, model=pro) image generation.
+// Swapped from Nano Banana Pro (nano_banana_2) — NB-Pro usage limit hit; flux_2 'pro' is the equivalent
+// high-fidelity image model and takes the SAME --prompt / --aspect_ratio / --resolution / --image flags.
+// This is the single image chokepoint for BOTH workflows (cinematic-showcase standalone AND cinematic-site,
+// incl. the showcase within it) plus the hero scripts, so this one pin swaps the model everywhere.
 // Exports hfImage() and provides a CLI guarded by import.meta.main.
 import { existsSync, readFileSync } from "node:fs";
 import {
@@ -26,7 +30,7 @@ function resolvePrompt(o: { promptFile?: string; prompt?: string }): string {
 }
 
 /**
- * Generate an image with Nano Banana Pro. Returns the result URL (or a fake
+ * Generate an image with Flux.2 Pro. Returns the result URL (or a fake
  * cloudfront URL in dry-run). Downloads the asset to `out` and verifies it.
  */
 export function hfImage(opts: HfImageOpts): string {
@@ -47,8 +51,11 @@ export function hfImage(opts: HfImageOpts): string {
   }
 
   // ---- REAL: build the pinned higgsfield command. ----
+  // flux_2 with the 'pro' variant (explicit, though 'pro' is also the flux_2 default). Same flag surface as the
+  // former nano_banana_2 pin: --prompt / --aspect_ratio (16:9) / --resolution (2k) / repeatable --image refs.
   const args = [
-    "generate", "create", "nano_banana_2",
+    "generate", "create", "flux_2",
+    "--model", "pro",
     "--prompt", prompt,
     "--aspect_ratio", aspect,
     "--resolution", resolution,

@@ -8,12 +8,12 @@ Generating in this order ensures the two images share composition, camera angle,
 
 ## Step 1 — Generate the AFTER image (the ideal state)
 
-Generate the after image using a standard NB-Pro prompt for the desired final state. Use the after prompt from `plan.json` (`before_after.pairs[n].after_prompt`).
+Generate the after image using a standard Flux.2 Pro prompt for the desired final state. Use the after prompt from `plan.json` (`before_after.pairs[n].after_prompt`).
 
-**NB-Pro call:**
+**Flux.2 Pro call:**
 ```bash
 # The after_prompt from plan.json
-higgsfield generate create nano_banana_2 \
+higgsfield generate create flux_2 \
   --prompt "[AFTER_PROMPT from plan.json]" \
   --aspect_ratio 16:9 \
   --resolution 2k \
@@ -26,7 +26,7 @@ Save the result as `$ARTIFACTS_DIR/scenes/beforeafter/pair-{n}-after.png`.
 
 ## Step 2 — Derive the BEFORE image from the AFTER
 
-Pass the after image as the reference (`--image ./pair-{n}-after.png`) and prompt NB-Pro to derive the before state from it, keeping everything else identical.
+Pass the after image as the reference (`--image ./pair-{n}-after.png`) and prompt Flux.2 Pro to derive the before state from it, keeping everything else identical.
 
 **Before-derivation prompt template:**
 
@@ -34,9 +34,9 @@ Pass the after image as the reference (`--image ./pair-{n}-after.png`) and promp
 Create an image exactly like this reference, but [BEFORE STATE DESCRIPTION — e.g., "with the windows visibly aged and weathered: peeling paint on the frames, fogged glass, and water stains on the sill — the kind of windows due for replacement"]. Same composition, same camera angle, same lighting setup, same room and environment. Every element except the state of the [SUBJECT — e.g., "windows"] must be identical to the reference.
 ```
 
-**NB-Pro call:**
+**Flux.2 Pro call:**
 ```bash
-higgsfield generate create nano_banana_2 \
+higgsfield generate create flux_2 \
   --prompt "[FILLED BEFORE-DERIVATION PROMPT]" \
   --image ./pair-{n}-after.png \
   --aspect_ratio 16:9 \

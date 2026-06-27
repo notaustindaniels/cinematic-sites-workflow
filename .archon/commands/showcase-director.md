@@ -153,7 +153,7 @@ Return the node's `output_format` JSON and also write the identical object to
   "grid": { "cols": 2, "rows": 2 },          // panels.length must equal cols*rows
   "panels": [                                  // ORDERED = grid reading order = journey order
     { "id":"p1", "scene_label":"Exterior entry", "composition":"…",
-      "nb_prompt":"<exact Nano-Banana-Pro prompt for this panel — same global style>" }
+      "nb_prompt":"<exact Flux.2 Pro prompt for this panel — same global style>" }
     // p2 … pN
   ],
   "flythrough_prompt":"<the ONE Seedance prompt — SHORT & tight (~50–80 words / under ~500 chars), names the path with TWO-BEAT bounded turns ('turns 90 degrees left to face the archway, then continues straight ahead through it' — the bounded angle caps the rotation, the straight-ahead commit stops it over-rotating into a U-turn; never a bare 'turns left' which over-rotates ~180°, never a bounded turn without the straight-ahead commit), 'rises up'/'descends' for levels, opening any entry portal from closed as the camera fov passes through, and ENDS on the final space/reveal (no redundant closing meta-sentence). NO rig/aircraft words at all (no 'flight/flythrough/aerial/drone/fly/soar/bank'). NO duration/timestamp, NO negatives, NO material dump (those live in the panels).>",

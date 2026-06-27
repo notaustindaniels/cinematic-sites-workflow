@@ -1,6 +1,6 @@
-# NB-Pro Keyframe Prompt Template — the 2-frame showcase chain
+# Flux.2 Pro Keyframe Prompt Template — the 2-frame showcase chain
 
-Use this template to write the **Nano Banana Pro prompt for one showcase keyframe**. The showcase is a
+Use this template to write the **Flux.2 Pro prompt for one showcase keyframe**. The showcase is a
 chain of keyframes: `kf0 → kf1 → … → kfN`. Every keyframe except `kf0` is an **EDIT of the one before it**
 (passed as the reference image `refs[0]`). Seedance then animates between each adjacent pair.
 
@@ -9,7 +9,7 @@ The work-item tells you which kind of keyframe you're writing:
 - **`prompt_role: "establish"`** (only `kf0`, `refs: []`) — a fresh from-scratch generation. No reference image.
 - **`prompt_role: "reveal"`** (every later keyframe, `refs: [prior kf]`) — an edit of the prior frame.
 
-This template is the **opposite** of the Seedance clip template: NB-Pro needs *geometry, not action labels*.
+This template is the **opposite** of the Seedance clip template: Flux.2 Pro needs *geometry, not action labels*.
 Describe the resulting physical state, never the verb.
 
 ---
@@ -24,7 +24,7 @@ Describe the resulting physical state, never the verb.
 2. **Preserve the rest, inherit the light.** Keep the same world, building, materials, architecture, sky, and
    **lighting** exactly matching the reference. Because this frame is an *edit*, it inherits the reference's
    time-of-day and palette for free — so do NOT re-specify a different mood, and never use the word **"dark"**
-   for an opening (NB-Pro renders a pitch-black void and erases the interior you wanted to reveal).
+   for an opening (Flux.2 Pro renders a pitch-black void and erases the interior you wanted to reveal).
 
 The work-item carries everything you need: `depicts` (what this frame should show), `evolves_from` (what the
 reference currently shows), `seeds_next` (what must stay visible for the next scene), and `lighting` (the
@@ -45,7 +45,7 @@ siding/stone/glass/wood, reflections, shadows.] [LIGHTING — the time of day an
 visible or implied here: warm glow through the door seams, a glass wall beyond, a vista through a window.]
 ```
 
-Keep it photorealistic and visually dense — the more detail NB-Pro bakes in now, the less every later frame
+Keep it photorealistic and visually dense — the more detail Flux.2 Pro bakes in now, the less every later frame
 (and Seedance) has to invent.
 
 ---
@@ -68,8 +68,13 @@ which were seeded in the reference: e.g. "the foyer and, beyond it, the great-ro
 mountains that were already glowing through the door seams"]. [Keep visible the `seeds_next` element so the
 next scene can move into it.]
 
-[WRONG-MODE NEGATION — name the physical wrong-mode by description: e.g. "The door pivots on its central axis;
-it is not hinged at the side, it does not slide, it does not fold."]
+[ORIENTATION LOCK — REQUIRED for every mechanism; this is what stops a door opening from the WRONG SIDE.
+LOOK AT THE REFERENCE IMAGE and read off, concretely: which edge/axis the part hinges or pivots on (where is
+the pull handle, the hinge stile, the track?), and which way the moving part travels. State both, then negate
+the mirror image. e.g. "The door pivots on its vertical axis set about one-third in from the LEFT jamb — the
+hinge side shown in the reference — and its RIGHT leading edge (the one carrying the pull handle in the
+reference) swings toward the viewer and to the left. It does NOT pivot from the right edge; the leading edge
+does NOT swing to the right; and it is not side-hinged, it does not slide, it does not fold."]
 
 Keep the [siding, stone, glass, trim, landscaping, sky, and lighting] exactly matching the reference image —
 same world, same time of day. Every other element remains exactly as in the reference.
@@ -104,12 +109,12 @@ grounded in what the reference already showed.
 
 | Slot | What to write | Common mistakes |
 |---|---|---|
-| `SPECIFIC ELEMENT BY POSITION` | Identify the target by spatial relationship — center, left/right of door, inner/outer of a pair. | "the door" / "a window" (NB-Pro changes all similar elements) |
+| `SPECIFIC ELEMENT BY POSITION` | Identify the target by spatial relationship — center, left/right of door, inner/outer of a pair. | "the door" / "a window" (Flux.2 Pro changes all similar elements) |
 | `GEOMETRY OF THE OPEN STATE` | The resulting physical shape: "open ~80° on its central pivot axis", "lower sash slid up — bottom half an open rectangular gap, no glass". Never the verb. | "open the door" / "the door is open" / "a dark opening" |
 | `CONCRETE CONTENT` | 3+ specific named items, **all already implied in the reference**, the last of which is the `seeds_next` element. | "the warm interior" (a void) / naming a room not on screen in the reference (invention) |
-| `WRONG-MODE NEGATION` | Name the specific wrong mode NB-Pro defaults to (pivot→not side-hinged; single-hung→not a casement, no tilt; bifold→not a slider). | Omitting it; or naming the right mode |
+| `ORIENTATION LOCK` | **Read the reference** for which edge/axis the part moves on and which way it travels, state it ("pivots on the left-third axis; right leading edge swings toward viewer-left"), AND negate the mirror ("not from the right edge; leading edge does not swing right"). Then also negate the wrong *mode* (pivot→not side-hinged; single-hung→not a casement; bifold→not a slider). | Locking only the *mode* but not the *side/direction* → the model flips it and the door opens from the wrong side. Omitting it entirely. |
 | `MOVED` (B2) | Describe the camera as *continuing through an opening that was already visible* in the reference. | Describing arrival at a place not seen in the reference (invention) |
-| preserve clause | Enumerate what stays: materials, architecture, landscaping, sky, lighting. | "keep everything else the same" (too vague for NB-Pro) |
+| preserve clause | Enumerate what stays: materials, architecture, landscaping, sky, lighting. | "keep everything else the same" (too vague for Flux.2 Pro) |
 
 ---
 
@@ -163,6 +168,9 @@ visible, since the next scene opens onto them.
 3. **Geometry, not labels** for mechanisms. Never "open the door"; describe the resulting physical state.
 4. **Never the word "dark"** for an opening — write "open gap — no glass" and separately name the lit interior.
 5. **Name the concrete content** (3+ items); the last seeds the next scene. Never leave a void.
-6. **Negate the wrong mode** for mechanisms, by physical description.
+6. **Lock the orientation, then negate the wrong mode** for mechanisms. Read the reference for which edge/axis
+   the part hinges or pivots on and which way it travels, state it explicitly, and negate the mirror image —
+   THEN negate the wrong mode. A door that opens from the wrong side passed mode-negation but failed the
+   orientation lock; this rule exists to catch exactly that.
 7. **Preserve the rest, inherit the light.** Same world, materials, sky, and time of day as the reference; do
    not re-specify a different mood mid-chain.

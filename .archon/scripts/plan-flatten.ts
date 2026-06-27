@@ -9,7 +9,7 @@
 //   kf0 ──clip1──► kf1 ──clip2──► kf2 ──clip3──► kf3      (example: 3 scenes)
 //  (fresh)        (edit of kf0)  (edit of kf1)  (edit of kf2)
 //
-//   • kf0 is the ONLY fresh NB-Pro generation (refs []). Every later kf is an NB-Pro
+//   • kf0 is the ONLY fresh Flux.2 Pro generation (refs []). Every later kf is an Flux.2 Pro
 //     EDIT of the one before it (refs [kf(k-1)]) — same world, for free.
 //   • Scene k's clip animates kf(k-1) → kf(k): hf-video --start-image kf(k-1) --end-image kf(k).
 //   • Scene k's END frame (kf(k)) IS scene k+1's START frame — the SAME FILE path, reused
@@ -96,7 +96,7 @@ function flattenShowcase(A: string, plan: any): ShowcaseItem[] {
     const depicts = kfContent[k];
 
     const notes = first
-      ? `Establishing frame of the showcase — the single fresh Nano Banana Pro generation (no reference image). Compose: ${depicts}.${lighting ? ` Lighting (global mood for the whole showcase): ${lighting}.` : ""}`
+      ? `Establishing frame of the showcase — the single fresh Flux.2 Pro generation (no reference image). Compose: ${depicts}.${lighting ? ` Lighting (global mood for the whole showcase): ${lighting}.` : ""}`
       : `EDIT of the previous keyframe (refs[0]), which shows: ${evolvesFrom}. Evolve it so it now shows: ${depicts}. THE HARD RULE: everything new here must already be visible or clearly implied in the reference (through the doorway, window, opening, or in the distance) — REVEAL it, never invent a space that was not on screen. Keep the same world, building, materials, architecture, sky and light as the reference${lighting ? ` (global mood stays: ${lighting})` : ""}; do not re-specify a different time of day.${seeds ? ` Keep visible, for the NEXT scene to move into: ${seeds}.` : ""}`;
 
     items.push({

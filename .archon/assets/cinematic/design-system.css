@@ -79,6 +79,10 @@ img{max-width:100%;display:block}
   opacity:.85;transition:opacity .25s ease;
 }
 .site-nav .nav-links a:hover{opacity:1}
+.nav-hamburger{
+  display:none;background:none;border:none;cursor:pointer;
+  color:var(--color-text,#fff);font-size:1.5rem;line-height:1;padding:.25rem;
+}
 
 /* ----- Rule 3: Generous section spacing. Rule 7: section rhythm. ----- */
 section{
@@ -192,6 +196,17 @@ section{
   .hero-content{padding:1.5rem 1.25rem 2rem}
   .hero-tagline{font-size:1.05rem}
   p{max-width:100%}
+}
+
+@media (max-width:640px){
+  .nav-hamburger{display:block}
+  .site-nav{flex-wrap:wrap;align-items:center}
+  .site-nav .nav-links{
+    display:none;flex-direction:column;width:100%;
+    gap:.75rem;padding:.75rem 0 1rem;text-align:center;
+    border-top:1px solid rgba(255,255,255,.08);margin-top:.5rem;
+  }
+  .site-nav.nav-open .nav-links{display:flex}
 }
 
 @media (max-width:375px){

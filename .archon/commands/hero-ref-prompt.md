@@ -1,5 +1,5 @@
 ---
-description: Write the Nano Banana Pro hero reference-image prompt (Step 2A / §7.1) — 9 slots, leads with [16:9].
+description: Write the Flux.2 Pro hero reference-image prompt (Step 2A / §7.1) — 9 slots, leads with [16:9].
 argument-hint: (no arguments — reads $ARTIFACTS_DIR/brand/brand-system.json and plan.json)
 ---
 
@@ -7,7 +7,7 @@ argument-hint: (no arguments — reads $ARTIFACTS_DIR/brand/brand-system.json an
 
 **Workflow ID**: $WORKFLOW_ID
 
-You write ONE Nano Banana Pro image prompt for the hero **start/reference** frame. A `[DET]` script feeds it straight to the CLI, so your only job is the prompt text. This node runs with **fresh context** — load from files.
+You write ONE Flux.2 Pro image prompt for the hero **start/reference** frame. A `[DET]` script feeds it straight to the CLI, so your only job is the prompt text. This node runs with **fresh context** — load from files.
 
 ---
 
@@ -44,7 +44,7 @@ Return the node's `output_format` JSON with EXACTLY this field:
 
 **Required:** `prompt`.
 
-**Write the artifact:** write the prompt TEXT (the raw string, not JSON) to `$ARTIFACTS_DIR/scenes/hero/ref-prompt.txt` (create the `scenes/hero/` dirs). The `gen-hero-ref` script reads this `.txt` file and passes it to Nano Banana Pro at 16:9 / 2k. The text in `ref-prompt.txt` must be identical to the `prompt` value you return.
+**Write the artifact:** write the prompt TEXT (the raw string, not JSON) to `$ARTIFACTS_DIR/scenes/hero/ref-prompt.txt` (create the `scenes/hero/` dirs). The `gen-hero-ref` script reads this `.txt` file and passes it to Flux.2 Pro at 16:9 / 2k. The text in `ref-prompt.txt` must be identical to the `prompt` value you return.
 
 ### PHASE_3_CHECKPOINT
 - [ ] Prompt leads with `16:9` and fills all 9 slots in order

@@ -1,7 +1,7 @@
 name: cinematic-site
 description: |
   Turn a website or business idea into a cinematic, scroll-animated landing page with an
-  AI hero video (Higgsfield: Nano Banana Pro + Seedance 2.0 Fast), then build and deploy it.
+  AI hero video (Higgsfield: Flux.2 Pro + Seedance 2.0 Fast), then build and deploy it.
   Decomposed, schema-constrained, critic-verified pipeline tuned so weak models match the
   cinematic-site-kit-higgsfield skill's quality. Gated at each PAUSE point.
   Use when the user wants a cinematic landing page, scroll-animated / scrollytelling site,
@@ -491,7 +491,7 @@ nodes:
            If it prints NONE → output <promise>PANELS_DONE</promise> and stop.
         2. Parse the item JSON: id, refs[], out, prompt, scene_label.
         3. Write the item's prompt VERBATIM to $ARTIFACTS_DIR/showcase/<id>.prompt.txt — do NOT edit it.
-        4. Generate the panel (Nano Banana Pro, 2k):
+        4. Generate the panel (Flux.2 Pro, 2k):
            - with a ref (style anchor):  bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --image <refs[0]> --resolution 2k
            - first panel (no ref):       bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --resolution 2k
         5. If the output image exists, mark done:
