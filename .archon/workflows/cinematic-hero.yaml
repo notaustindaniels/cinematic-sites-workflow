@@ -1,0 +1,245 @@
+name: cinematic-hero
+description: |
+  Cinematic HERO video (hero section only) — for ANY business, via the seam-free GRID method (the showcase
+  technique, scaled down). An intake interview decides what the hero SHOWCASES; one opus Director designs exactly
+  TWO same-style panels — panel 1 = the start of the hero moment, panel 2 = the landing (the feature scene) — plus
+  ONE tight Seedance move with NO timestamps and NO negatives. The 2 panels composite into ONE numbered grid image
+  and Seedance renders ONE continuous ~5-second video (shorter than the showcase's 15s). One image in, one short
+  video out — no seams, no hallucination. Gated before and after the paid render.
+  Use to generate a standalone above-the-fold hero background video for a brand.
+  NOT the full cinematic-site build (intake/brand/showcase/site/deploy) — this is the hero only.
+provider: claude
+model: sonnet
+interactive: true
+thinking: adaptive
+worktree:
+  enabled: false  # in-place (untracked build)
+
+nodes:
+  # ──────────────────────────── PREFLIGHT ────────────────────────────
+  - id: preflight
+    script: preflight
+    runtime: bun
+    timeout: 90000
+
+  - id: require-higgsfield
+    cancel: "Higgsfield CLI not found or not authenticated. Install it and run `higgsfield auth login`, then re-run."
+    depends_on: [preflight]
+    when: "$preflight.output.higgsfield == 'false'"
+
+  - id: require-ffmpeg
+    cancel: "ffmpeg is required (ffprobe verifies the rendered video). Install ffmpeg (brew install ffmpeg) and re-run."
+    depends_on: [preflight]
+    when: "$preflight.output.ffmpeg == 'false'"
+
+  - id: require-imagemagick
+    cancel: "ImageMagick (magick) is required to composite the 2-panel hero grid. Install it (brew install imagemagick) and re-run."
+    depends_on: [preflight]
+    when: "$preflight.output.imagemagick == 'false'"
+
+  # ──────────────────────────── INTERVIEW (what the hero must SHOWCASE) ────────────────────────────
+  # The intake decides what the hero features and HOW the business is introduced (a custom home builder is sold by
+  # bringing the viewer INTO the home, not a distant exterior crane). The Director designs the 2 panels to it.
+  - id: hero-intake
+    command: hero-intake
+    depends_on: [preflight]
+    when: "$preflight.output.higgsfield == 'true'"
+    context: fresh
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        business: { type: string }
+        sells: { type: string }
+        hero_subject: { type: string }
+        introduction: { type: string }
+        feature_scene: { type: string }
+        feel_pace: { type: string }
+        must_haves: { type: array, items: { type: string } }
+        open_questions: { type: array, items: { type: string } }
+      required: [business, sells, hero_subject, introduction, feature_scene, feel_pace, open_questions]
+
+  - id: hero-intake-gate
+    approval:
+      message: |
+        HERO INTAKE — review what the hero will SHOWCASE before the Director designs it.
+        Open $ARTIFACTS_DIR/hero/hero-intake.md: confirm the hero SUBJECT (what dominates the frame) and the
+        INTRODUCTION (how the business is presented — e.g. a home builder brought INTO the home, landing on the
+        great room), and answer any open questions. Reject with answers to refine; approve when it's right.
+      capture_response: true
+      on_reject:
+        prompt: |
+          Fold these answers into $ARTIFACTS_DIR/hero/hero-intake.md and $ARTIFACTS_DIR/hero/hero-intake.json
+          (keep both in sync, same JSON shape). Resolve any now-answered open_questions, remove them from the
+          list, and re-ask anything still vague — never silently assume what the hero features. Human feedback:
+          $REJECTION_REASON
+        max_attempts: 6
+    depends_on: [hero-intake]
+
+  # ──────────────────────────── DIRECTOR (2-panel grid spec) ────────────────────────────
+  - id: hero-director
+    command: hero-director
+    depends_on: [hero-intake-gate]
+    context: fresh
+    model: opus
+    skills: [cinematic-site-kit-higgsfield]
+    output_format:
+      type: object
+      properties:
+        style: { type: object }
+        grid:
+          type: object
+          properties:
+            cols: { type: integer, minimum: 1, maximum: 2 }
+            rows: { type: integer, minimum: 1, maximum: 1 }
+          required: [cols, rows]
+        panels:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              scene_label: { type: string }
+              composition: { type: string }
+              nb_prompt: { type: string }
+            required: [id, composition, nb_prompt]
+        flythrough_prompt: { type: string }
+        duration: { type: integer, minimum: 4, maximum: 15 }
+      required: [style, grid, panels, flythrough_prompt, duration]
+
+  # AUTO-REVISE LOOP — the Director critiques its OWN spec against rubrics/hero.md and revises until it PASSes,
+  # BEFORE any panel is generated. HARD checks: 2 panels [start, landing]; panel 2 = the intake feature_scene with
+  # the subject dominating; ONE consistent style; the flythrough matches the intake feel_pace, lands+settles on
+  # panel 2, has NO timestamps, NO negatives, NO rig words, is tight (~5s), phrase-emphasis balanced.
+  - id: refine-loop
+    depends_on: [hero-director]
+    idle_timeout: 600000
+    loop:
+      prompt: |
+        You are the Hero Director acting as your own STRICT critic-and-reviser. Converge the hero spec to clean
+        BEFORE any panel is generated. State lives in $ARTIFACTS_DIR/hero/hero-spec.json and
+        $ARTIFACTS_DIR/hero/hero-verdict.json. The hero intake is $ARTIFACTS_DIR/hero/hero-intake.json.
+
+        1. CRITIQUE — read $ARTIFACTS_DIR/hero/hero-spec.json and apply the rubric at
+           .archon/assets/cinematic/rubrics/hero.md VERBATIM and strictly. Pay special attention to: exactly 2
+           panels ordered [start, landing]; panel 2 IS the intake's feature_scene with the hero_subject dominating
+           (NOT an exterior facade or bare sky/peaks when the feature is an interior); both panels share ONE
+           style/world/lighting; the flythrough_prompt MATCHES the intake feel_pace (a "slow/luxurious" brief is a
+           slow deliberate move, never "drives powerfully"), LANDS and settles on panel 2, has NO timestamp/
+           per-second beats, NO list of negatives, NO rig/aircraft words ("drone/fly/aerial/bank"), is TIGHT
+           (~30–55 words / under ~400 chars), and carries phrase-level emphasis (each complete spatial phrase
+           back-ticked, every backtick paired). Write your honest verdict {verdict,reasons[],fixes[]} to
+           $ARTIFACTS_DIR/hero/hero-verdict.json.
+        2. REVISE — if the verdict is FAIL, edit $ARTIFACTS_DIR/hero/hero-spec.json to fix EVERY reason (make
+           panel 2 the feature_scene with the subject dominating; align both panels' style; rewrite the
+           flythrough to match the feel_pace, land on panel 2, remove timestamps/negatives, fix the emphasis).
+           Then re-write hero-verdict.json for the REVISED spec.
+        3. SIGNAL — only if the spec now genuinely PASSes every check, output <promise>SPEC_OK</promise>.
+           Otherwise end your turn and you will iterate again.
+        Do NOT generate any images. Only read/edit hero-spec.json and hero-verdict.json.
+      until: SPEC_OK
+      max_iterations: 5
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/hero-verdict-passed.ts'
+
+  # ──────────────────────────── GENERATE PANELS → COMPOSE GRID ────────────────────────────
+  - id: hero-flatten
+    script: hero-flatten
+    runtime: bun
+    depends_on: [refine-loop]   # panels only generate AFTER the spec converges to PASS
+    timeout: 30000
+
+  - id: hero-image-gen
+    depends_on: [hero-flatten]
+    idle_timeout: 1200000
+    loop:
+      prompt: |
+        FRESH iteration — no memory. State lives in $ARTIFACTS_DIR/hero/plan.json. The panel prompts were ALREADY
+        WRITTEN by the Director — you do NOT write, improve, or change any prompt. You ONLY execute.
+        IMPORTANT: every plan-step.ts call MUST be prefixed `ARTIFACTS_DIR="$ARTIFACTS_DIR"` — copy verbatim.
+
+        1. Next panel:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next hero
+           If it prints NONE → output <promise>PANELS_DONE</promise> and stop.
+        2. Parse the item JSON: id, refs[], out, prompt, scene_label.
+        3. Write the item's prompt VERBATIM to $ARTIFACTS_DIR/hero/<id>.prompt.txt — do NOT edit it.
+        4. Generate the panel (Flux.2 Pro, 2k):
+           - with a ref (style anchor):  bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --image <refs[0]> --resolution 2k
+           - first panel (no ref):       bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --resolution 2k
+        5. If the output image exists, mark done:
+             ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --mark-done hero <id>
+           If generation errored transiently, do NOT mark done — end the turn so it retries next iteration.
+        6. Do exactly ONE panel per iteration, then end your turn.
+      until: PANELS_DONE
+      max_iterations: 10
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done hero'
+
+  - id: hero-compose
+    script: hero-compose
+    runtime: bun
+    depends_on: [hero-image-gen]
+    timeout: 120000
+
+  # ──────────────────────────── GATE: review the grid BEFORE the Seedance spend ────────────────────────────
+  - id: hero-gate
+    approval:
+      message: |
+        HERO GRID — this single image is what gets fed to Seedance (review BEFORE the paid render).
+        Open $ARTIFACTS_DIR/scenes/hero/hero-grid.png — two numbered panels: [1] the start of the hero moment,
+        [2] the landing (the feature scene, the subject dominating). The Seedance move is hero-spec.json.
+        flythrough_prompt (already converged to a PASS verdict via the auto-revise loop) — it should match the
+        brand's feel/pace and land on panel 2. Approve to render the ~5s hero, or reject naming the panel(s) to
+        regenerate (or the move to tweak).
+      capture_response: true
+      on_reject:
+        prompt: |
+          For the panel(s) named in this feedback: $REJECTION_REASON — reset their status to "pending" in
+          $ARTIFACTS_DIR/hero/plan.json (and, if the prompt itself needs changing, edit that panel's nb_prompt in
+          $ARTIFACTS_DIR/hero/hero-spec.json then re-run `bun .archon/scripts/hero-flatten.ts`). Regenerate the
+          reset panel(s) via `bun .archon/scripts/hf-image.ts` using their pre-written prompt, then re-run
+          `bun .archon/scripts/hero-compose.ts` to rebuild the grid. If the MOVE is the issue, edit
+          hero-spec.json.flythrough_prompt (keep it timestamp-free, negatives-free, matching the feel_pace,
+          landing on panel 2, phrase-emphasized).
+        max_attempts: 5
+    depends_on: [hero-compose]
+
+  # ──────────────────────────── THE SEEDANCE RENDER ────────────────────────────
+  - id: gen-hero
+    script: gen-hero
+    runtime: bun
+    depends_on: [hero-gate]
+    timeout: 1500000   # one Seedance render (up to ~20m internal wait)
+    retry:
+      max_attempts: 2
+      delay_ms: 8000
+
+  - id: hero-video-gate
+    approval:
+      message: |
+        HERO VIDEO — the rendered hero at $ARTIFACTS_DIR/scenes/hero/hero-final.mp4 (one Seedance render from the
+        2-panel grid — no seams). Watch it: it should be ONE smooth continuous move from panel 1 to panel 2 that
+        LANDS and settles on the feature scene, matching the brand's feel/pace — no breach/morph, no fly-out, no
+        Ken-Burns zoom, no snap or loop. Approve, or reject to re-render (tweak the flythrough_prompt in
+        hero-spec.json — keeping it timestamp-free and negatives-free — or regenerate a panel + re-compose first).
+      capture_response: true
+      on_reject:
+        prompt: |
+          Address this feedback: $REJECTION_REASON. If it's the camera/move, edit
+          $ARTIFACTS_DIR/hero/hero-spec.json flythrough_prompt (NEVER add a timestamp or negatives; match the
+          feel_pace, land on panel 2, phrase-emphasized) and re-run `bun .archon/scripts/gen-hero.ts`. If a panel
+          is wrong, reset it in plan.json, regenerate via hf-image.ts, re-run `bun .archon/scripts/hero-compose.ts`,
+          then `bun .archon/scripts/gen-hero.ts`.
+        max_attempts: 4
+    depends_on: [gen-hero]
+
+  - id: report
+    bash: |
+      echo "===================== CINEMATIC HERO (GRID) — DELIVERY ====================="
+      echo "Hero video:  $ARTIFACTS_DIR/scenes/hero/hero-final.mp4"
+      echo "Hero grid:   $ARTIFACTS_DIR/scenes/hero/hero-grid.png"
+      echo "Hero spec:   $ARTIFACTS_DIR/hero/hero-spec.json"
+      echo "==========================================================================="
+    depends_on: [hero-video-gate]
+    trigger_rule: all_done
