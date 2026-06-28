@@ -40,6 +40,14 @@ state-checks are not your job; these are the judgment checks the Director must s
 - [ ] **No duration/timestamp** in the prompt text (no "15 seconds", "0-3s").
 - [ ] **No list of negatives** ("no morphing / no warping / no people…").
 - [ ] **No exhaustive material/fixture dump** (that detail lives in the panels).
+- [ ] **Phrase-level emphasis written in (backticks).** Each COMPLETE spatial phrase is wrapped in backticks — the
+  whole motion+its-path (`` `passes through into the great room past the fireplace` ``), each bounded turn + each
+  straight commit (`` `turns 90 degrees right` ``, `` `continues straight ahead` ``), each portal/state phrase
+  (`` `hinged on the right` ``, `` `swings open to the right` ``), and each landmark/target noun-phrase
+  (`` `cased opening` ``, `` `pivoting glass wall` ``, `` `past the stone island` ``); ONLY the connective grammar
+  ("the camera fov", "as it", "then", "to face the") is left plain. **FAIL** bare-verb-only emphasis (e.g.
+  `` `passes` `` through into the great room — verb spotlighted, path/landmarks left plain), a door action merged
+  with the camera's through-motion into one span, OR any unpaired/unbalanced backtick.
 
 ## D. The entry door
 - [ ] If the path passes through a hinged door, the entry panel shows a **single, closed** door, and the prompt

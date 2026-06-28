@@ -104,6 +104,29 @@ of the camera rig. An over-detailed prompt makes Seedance hit-or-miss; a tight o
 - **Name the spaces in journey order and the path** between them (in through the entry, through the great room,
   into the kitchen, out onto the deck). **The panels already carry the materials and detail — do NOT re-list
   materials/fixtures in the prompt.**
+- **EMPHASIZE EACH COMPLETE SPATIAL PHRASE with backticks — this is how Seedance is told what matters, so write
+  the emphasis IN.** Seedance acts on back-ticked spans as its instructions. Wrap each COMPLETE unit of spatial
+  meaning as ONE span; NEVER spotlight a bare verb and leave its path/landmarks plain in the background (the path
+  and landmarks are exactly what keep the camera on route). Wrap, each as its own span:
+  - a motion together with its FULL trajectory — `` `moves low along the stone path` ``, `` `passes through into
+    the great room past the limestone fireplace` `` (the verb PLUS every "through / into / past …" that traces
+    where it goes);
+  - each bounded turn and each straight commit — `` `turns 90 degrees right` ``, `` `continues straight ahead` ``;
+  - each portal / state phrase — `` `hinged on the right` ``, `` `swings open to the right` ``;
+  - each landmark or target object the camera faces or passes, as its own noun-phrase span — `` `cased opening` ``,
+    `` `pivoting glass wall` ``, `` `past the stone island` ``.
+  Leave ONLY the connective grammar plain — "the camera fov", "as it", "then", "to face the", "and". Keep the
+  door's action and the camera's through-motion as SEPARATE spans (the door `` `swings open to the right` ``; the
+  camera fov `` `passes through into the great room` ``) — never merge them. EVERY backtick must be paired.
+  Worked example — write the emphasis exactly this granularity:
+  > The camera fov `` `moves low along the stone path` ``; the single door, `` `hinged on the right` ``, `` `swings
+  > open to the right` `` as the camera fov `` `passes through into the great room past the limestone fireplace` ``.
+  > It `` `turns 90 degrees right` `` to face the `` `cased opening` ``, then `` `continues straight ahead` `` into
+  > the kitchen `` `past the stone island` ``. It `` `turns 90 degrees left` `` to face the `` `pivoting glass
+  > wall` ``, then `` `continues straight ahead` `` as it `` `swings open` `` onto the covered deck.
+
+  NOT this (bare-verb-only — the path and landmarks fade, the camera drifts): the camera fov `` `moves` `` low
+  along the stone path … `` `passes` `` through into the great room … the `` `pivoting` `` glass wall.
 - **When the path passes through a door or window, OPEN it from closed as the camera fov passes through** — e.g.
   "the closed pivot door swings open as the camera fov passes through it", "the sliding glass parts as the
   camera fov moves out onto the deck". The viewpoint never passes through a shut door or solid glass; the portal
@@ -156,7 +179,7 @@ Return the node's `output_format` JSON and also write the identical object to
       "nb_prompt":"<exact Flux.2 Pro prompt for this panel — same global style>" }
     // p2 … pN
   ],
-  "flythrough_prompt":"<the ONE Seedance prompt — SHORT & tight (~50–80 words / under ~500 chars), names the path with TWO-BEAT bounded turns ('turns 90 degrees left to face the archway, then continues straight ahead through it' — the bounded angle caps the rotation, the straight-ahead commit stops it over-rotating into a U-turn; never a bare 'turns left' which over-rotates ~180°, never a bounded turn without the straight-ahead commit), 'rises up'/'descends' for levels, opening any entry portal from closed as the camera fov passes through, and ENDS on the final space/reveal (no redundant closing meta-sentence). NO rig/aircraft words at all (no 'flight/flythrough/aerial/drone/fly/soar/bank'). NO duration/timestamp, NO negatives, NO material dump (those live in the panels).>",
+  "flythrough_prompt":"<the ONE Seedance prompt — SHORT & tight (~50–80 words / under ~500 chars), names the path with TWO-BEAT bounded turns ('turns 90 degrees left to face the archway, then continues straight ahead through it' — the bounded angle caps the rotation, the straight-ahead commit stops it over-rotating into a U-turn; never a bare 'turns left' which over-rotates ~180°, never a bounded turn without the straight-ahead commit), 'rises up'/'descends' for levels, opening any entry portal from closed as the camera fov passes through, and ENDS on the final space/reveal (no redundant closing meta-sentence). EMPHASIS WRITTEN IN: each COMPLETE spatial phrase wrapped in backticks — the whole motion+its-path ('`passes through into the great room past the fireplace`'), each bounded turn + straight commit, each portal/state phrase ('`hinged on the right`','`swings open to the right`'), each landmark/target noun-phrase ('`cased opening`','`pivoting glass wall`'); only connective grammar left plain; every backtick paired; door action and camera through-motion kept as separate spans. NO rig/aircraft words at all (no 'flight/flythrough/aerial/drone/fly/soar/bank'). NO duration/timestamp, NO negatives, NO material dump (those live in the panels).>",
   "duration": 15
 }
 ```

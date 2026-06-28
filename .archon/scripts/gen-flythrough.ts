@@ -11,14 +11,15 @@ import { hfVideo } from "./hf-video.ts";
 
 interface GridSpec { flythrough_prompt?: string; duration?: number }
 
-// ── Motion-PHRASE emphasis ────────────────────────────────────────────────────────────────────────────────
-// Seedance attends to back-ticked words. We wrap the COMPLETE motion as ONE span — the verb together with the
-// bare modifiers that DEFINE that motion (a result particle like "open"; a turn's "90 degrees left") — instead of
-// spotlighting the lone verb and orphaning the words that say HOW it moves. So: `swings open`, `turns 90 degrees
-// left` — NOT `swings` `open`, `turns` 90 degrees left. Prepositional paths ("up the flagstone path", "out onto
-// the deck", "to the left") are left OUT of the span: they say WHERE, not how, so the verb stays the focus there.
-// Applied at render time from the clean spec; we first strip any stray backticks so it's fully idempotent. To try
-// a different marker (a wrapping pair), change EMPH here.
+// ── Motion emphasis — FALLBACK ONLY ───────────────────────────────────────────────────────────────────────
+// Seedance attends to back-ticked spans. The PRIMARY emphasis is now written by the opus Director at PHRASE level
+// (each complete spatial phrase wrapped — the whole motion+its-path, portal/state phrases, landmark noun-phrases;
+// only connective grammar left plain — see showcase-director.md Phase 4). emphasizeMotion() passes a balanced,
+// Director-emphasized prompt through UNCHANGED. The regex below is a SAFETY NET, used only when the prompt arrives
+// with no emphasis (or a malformed odd backtick count): it wraps the COMPLETE motion as one span — the verb plus
+// the modifiers that DEFINE it (result particle "open"; a turn's "90 degrees left") — so a prompt is never sent
+// un-emphasized. It is coarser than the Director's phrase grouping (it does not catch landmark noun-phrases).
+// To try a different marker (a wrapping pair), change EMPH here.
 const EMPH = "`"; // backtick / grave accent
 
 // Single motion/actuation verbs — the fallback when there's no defining modifier to absorb (e.g. "glides", "parts").
@@ -66,10 +67,17 @@ const MOTION_RE = new RegExp(
   "gi",
 );
 
-/** Wrap each complete motion phrase in EMPH. Strips existing backticks first (idempotent). Returns the decorated
- *  prompt + the phrases hit (for logging). */
+/** Apply motion emphasis. PREFERRED: the opus Director already wrote phrase-level emphasis (complete spatial
+ *  phrases wrapped, balanced backticks) — trust it and pass the prompt through verbatim. FALLBACK: if the prompt
+ *  has NO emphasis, or an odd/unbalanced backtick count (malformed), strip any strays and apply the deterministic
+ *  regex (verb-level) so a prompt is never sent to Seedance un-emphasized. Returns the prompt + spans hit (log). */
 function emphasizeMotion(text: string): { out: string; hits: string[] } {
-  const clean = text.replace(/`/g, ""); // normalize so re-applying never double-wraps
+  const ticks = (text.match(/`/g) || []).length;
+  if (ticks >= 2 && ticks % 2 === 0) {
+    const spans = (text.match(/`[^`]+`/g) || []).map((s) => s.replace(/`/g, ""));
+    return { out: text, hits: spans.length ? spans : ["(director-emphasized)"] };
+  }
+  const clean = text.replace(/`/g, ""); // strip strays so the fallback never double-wraps
   const hits: string[] = [];
   const out = clean.replace(MOTION_RE, (m) => { const s = m.trim(); hits.push(s); return EMPH + s + EMPH; });
   return { out, hits };

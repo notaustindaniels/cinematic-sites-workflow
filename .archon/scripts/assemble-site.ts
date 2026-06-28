@@ -524,13 +524,52 @@ function buildContentSection(key: string, copy: string): string {
 </section>`;
 }
 
-function buildCtaSection(cta: any): string {
-  const headline = str(cta?.headline) || "Ready to get started?";
+// Contact / CTA section — a centered full-width band (no form, low-friction direct contact), modeled on the
+// windowsanddoorsbymartintoro.com pattern: headline + a short transparency sub-line + a primary CTA with an arrow,
+// then a labeled direct-contact row (Call / Email / Studio / Serving) with phone+email as tap-to-contact links.
+// Contact data comes from intake.json (contact + service_area); the sub-line reuses the brand hero_line/tagline.
+function buildCtaSection(cta: any, contact: any, serviceArea: string, subcopy: string): string {
+  const headline = str(cta?.headline) || "Ready to begin?";
   const button = str(cta?.button_label) || "Get in touch";
+  const phone = str(contact?.phone);
+  const email = str(contact?.email);
+  const location = str(contact?.location);
+  const sub = str(subcopy);
+  const telHref = phone.replace(/[^0-9+]/g, "");
+  const primaryHref = email
+    ? `mailto:${email}?subject=${encodeURIComponent("Consultation request")}`
+    : telHref ? `tel:${telHref}` : "#contact";
+
+  const items: string[] = [];
+  if (phone) items.push(`<a class="cta-contact-item" href="tel:${esc(telHref)}"><span class="cta-c-label">Call</span><span class="cta-c-value">${esc(phone)}</span></a>`);
+  if (email) items.push(`<a class="cta-contact-item" href="mailto:${esc(email)}"><span class="cta-c-label">Email</span><span class="cta-c-value">${esc(email)}</span></a>`);
+  if (location) items.push(`<div class="cta-contact-item"><span class="cta-c-label">Studio</span><span class="cta-c-value">${esc(location)}</span></div>`);
+  if (serviceArea) items.push(`<div class="cta-contact-item"><span class="cta-c-label">Serving</span><span class="cta-c-value">${esc(serviceArea)}</span></div>`);
+
   return `<section id="contact" class="cta-section reveal">
-  <div class="section-inner">
-    <h2>${esc(headline)}</h2>
-    <a class="btn btn-primary" href="#contact">${esc(button)}</a>
+  <style>
+    .cta-section{padding:clamp(4rem,12vw,9rem) clamp(1.25rem,5vw,2rem);text-align:center;border-top:1px solid rgba(255,255,255,0.08);}
+    .cta-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:1.5rem;}
+    .cta-section .cta-headline{font-family:var(--font-heading,serif);font-size:clamp(2rem,5vw,3.4rem);line-height:1.08;letter-spacing:-0.01em;margin:0;}
+    .cta-section .cta-sub{font-family:var(--font-body,sans-serif);font-size:clamp(1rem,2.2vw,1.2rem);line-height:1.6;max-width:54ch;margin:0;opacity:0.72;}
+    .cta-actions{margin-top:0.5rem;}
+    .cta-btn{display:inline-flex;align-items:center;gap:0.6rem;}
+    .cta-arrow{display:inline-block;transition:transform 0.3s cubic-bezier(0.22,1,0.36,1);}
+    .cta-btn:hover .cta-arrow{transform:translateX(5px);}
+    .cta-contact{margin-top:2.5rem;padding-top:2.25rem;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(1.5rem,5vw,3.5rem);width:100%;}
+    .cta-contact-item{display:flex;flex-direction:column;gap:0.4rem;text-decoration:none;color:inherit;}
+    .cta-c-label{font-family:var(--font-body,sans-serif);font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;opacity:0.72;}
+    .cta-c-value{font-family:var(--font-heading,serif);font-size:clamp(1.05rem,2.4vw,1.35rem);transition:color 0.25s ease;}
+    a.cta-contact-item:hover .cta-c-value{color:var(--color-primary,#c8b89a);}
+    @media (max-width:560px){.cta-contact{gap:1.5rem 2rem;}}
+  </style>
+  <div class="cta-inner">
+    <h2 class="cta-headline">${esc(headline)}</h2>
+    ${sub ? `<p class="cta-sub">${esc(sub)}</p>` : ""}
+    <div class="cta-actions">
+      <a class="btn btn-primary cta-btn" href="${esc(primaryHref)}">${esc(button)} <span class="cta-arrow">&rarr;</span></a>
+    </div>
+    ${items.length ? `<div class="cta-contact">${items.join("")}</div>` : ""}
   </div>
 </section>`;
 }
@@ -643,11 +682,17 @@ function main(): void {
   const navLinks = asArray<string>(sitePlan?.nav_links).map((l) => str(l)).filter(Boolean);
   const navHtml = buildNav(str(brand?.business_name) || "", navLinks);
 
-  const contentSections = asArray(sitePlan?.sections)
+  // The CTA section IS the contact area. Pull any "contact" content section out of the generic content list so we
+  // don't render two #contact sections (duplicate id), and reuse its AI-written copy as the CTA sub-line.
+  const allSections = asArray(sitePlan?.sections);
+  const contactSec = allSections.find((s: any) => /contact/i.test(str(s?.key)));
+  const contentSections = allSections
+    .filter((s: any) => s !== contactSec)
     .map((s: any) => buildContentSection(str(s?.key), str(s?.copy)))
     .join("\n");
 
-  const ctaHtml = buildCtaSection(sitePlan?.cta);
+  const ctaSub = str(contactSec?.copy) || str(brand?.hero_line) || str(brand?.tagline);
+  const ctaHtml = buildCtaSection(sitePlan?.cta, intake?.contact, str(intake?.service_area), ctaSub);
 
   // ── Assemble <head> styles + <body> scripts ──
   const moduleStyles = rendered.flatMap((r) => r.styles).join("\n");
