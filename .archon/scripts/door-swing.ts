@@ -30,13 +30,41 @@ function main(): void {
 
   const hinged = String(obs?.hinged_door ?? "").toLowerCase();
   const handle = String(obs?.handle_side ?? "").toLowerCase();
+  const doorType = String(obs?.single_or_double ?? "").toLowerCase();
 
   if (hinged !== "yes") {
     process.stdout.write(`door-swing: hinged_door="${hinged}" — no hinged door to fix; no change\n`);
     process.exit(0);
   }
+
+  // DOUBLE door: Flux rendered TWO leaves meeting at the center (door-check observed it, even when the Director
+  // asked for a single door). A double door has NO single hinge/swing side — both leaves part from the center, so
+  // handle_side is naturally "unclear". The Director's clause ("single ... door, hinged/swings to the <side>")
+  // then CONTRADICTS the rendered image and makes Seedance hallucinate the geometry (run 8f1cdcea's bug). Rewrite
+  // the whole clause to a center-parting double door that MATCHES the render.
+  if (doorType === "double") {
+    const prompt0: string = String(spec?.flythrough_prompt ?? "");
+    if (!prompt0) die(`door-swing: grid-spec.json has no flythrough_prompt`);
+    const doubleClause = "the paired doors part at the center and both leaves swing open as the camera fov passes through";
+    const plain0 = prompt0.replace(/`/g, "");
+    let out0 = plain0, did = false;
+    for (const re of [
+      /the\s+[^.,;]*\bdoors?\b[^.;]*?\bpasses through\b/i,        // "...door(s) ... passes through"
+      /the\s+[^.,;]*\bdoors?\b[^.;]*?\bswings? open[^.;]*/i,      // "...door(s) ... swings open ..."
+      /the\s+[^.,;]*\b(?:pivot\s+)?doors?\b[^.;]*/i,             // "...(pivot) door(s) ..."
+    ]) { if (re.test(out0)) { out0 = out0.replace(re, doubleClause); did = true; break; } }
+    if (!did) {
+      process.stdout.write(`door-swing: door is DOUBLE but no door clause matched to rewrite — leaving prompt (review).\n`);
+      process.exit(0);
+    }
+    spec.flythrough_prompt = out0;
+    writeJSON(specPath, spec);
+    process.stdout.write(`door-swing: door is DOUBLE — rewrote the clause to a center-parting double door (matches the render; gen-flythrough re-emphasizes).\n`);
+    process.exit(0);
+  }
+
   if (handle !== "left" && handle !== "right") {
-    process.stdout.write(`door-swing: handle_side="${handle}" (unclear) — leaving the door clause as the Director wrote it\n`);
+    process.stdout.write(`door-swing: single door, handle_side="${handle}" (unclear) — leaving the door clause as the Director wrote it\n`);
     process.exit(0);
   }
 

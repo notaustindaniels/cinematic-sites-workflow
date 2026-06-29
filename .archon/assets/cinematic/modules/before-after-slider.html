@@ -1,174 +1,157 @@
 <!--
-  CINEMATIC MODULE: Before/After Comparison Slider
-  Best for: Renovation, cleaning, restoration, beauty, landscaping — any transformation service
+  CINEMATIC MODULE: Before/After Comparison CAROUSEL
+  Best for: Renovation, cleaning, restoration, beauty, landscaping — any transformation service.
   Requires: Two images per comparison (before + after). Generate both with Flux.2 Pro.
-  
+
   IMAGE GENERATION STRATEGY:
   Generate the "after" image first (the ideal result), then generate the "before" image by prompting:
-  "Create an image exactly like this reference, but [describe the before state]. Same composition, same angle, same lighting setup."
-  This ensures both images share identical composition so the slider comparison is convincing.
+  "Create an image exactly like this reference, but [describe the before state]. Same composition, same angle,
+  same lighting setup." This ensures both images share identical composition so the slider comparison is convincing.
+
+  LAYOUT: a CAROUSEL — ONE before/after pair shown full-width at a time, navigated with prev/next arrows, dot
+  buttons, and a "1 / N" counter; each pair is itself a draggable slider. (Replaces the old static grid so each
+  transformation reads as a featured case study, like the skill's reference sites.)
 -->
 
 <style>
 .ba-section {
-  padding: clamp(4rem, 10vh, 8rem) clamp(2rem, 5vw, 6rem);
+  padding: clamp(4rem, 10vh, 8rem) clamp(1.5rem, 5vw, 6rem);
 }
 .ba-section-title {
   font-family: var(--font-heading, serif);
   font-size: clamp(1.8rem, 4vw, 3.5rem);
-  color: #fff;
+  color: var(--color-text, #fff);
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: clamp(2rem, 5vh, 3.5rem);
 }
-.ba-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+.ba-carousel { max-width: 1080px; margin: 0 auto; }
+.ba-viewport { overflow: hidden; }
+.ba-track { display: flex; transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
+.ba-item { flex: 0 0 100%; min-width: 100%; box-sizing: border-box; padding: 0 0.25rem; }
+.ba-item-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 1rem;
+}
+.ba-item-title {
+  font-family: var(--font-heading, serif); font-size: clamp(1.1rem, 2.4vw, 1.6rem); color: var(--color-text, #fff);
+}
+.ba-item-tag {
+  font-family: var(--font-body, sans-serif); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em;
+  color: var(--color-primary, #c4a882); white-space: nowrap;
 }
 .ba-container {
-  position: relative;
-  overflow: hidden;
-  border-radius: 16px;
-  cursor: ew-resize;
-  user-select: none;
-  -webkit-user-select: none;
-  aspect-ratio: 16/10;
+  position: relative; overflow: hidden; border-radius: 16px; cursor: ew-resize; user-select: none;
+  -webkit-user-select: none; aspect-ratio: 16/10;
 }
-.ba-container img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  pointer-events: none;
-}
-.ba-after {
-  z-index: 1;
-}
-.ba-before {
-  z-index: 2;
-  clip-path: inset(0 50% 0 0);
-}
+.ba-container img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.ba-after { z-index: 1; }
+.ba-before { z-index: 2; clip-path: inset(0 50% 0 0); }
 .ba-handle {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 4px;
-  background: #fff;
-  z-index: 3;
-  transform: translateX(-50%);
-  box-shadow: 0 0 12px rgba(0,0,0,0.4);
+  position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; background: #fff; z-index: 3;
+  transform: translateX(-50%); box-shadow: 0 0 12px rgba(0,0,0,0.4);
 }
 .ba-handle::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 44px;
-  height: 44px;
-  background: #fff;
-  border-radius: 50%;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px;
+  background: #fff; border-radius: 50%; box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 .ba-handle::after {
-  content: '◂ ▸';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 14px;
-  color: #333;
-  letter-spacing: 2px;
-  white-space: nowrap;
-  z-index: 4;
+  content: '\25C2 \25B8'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px;
+  color: #333; letter-spacing: 2px; white-space: nowrap; z-index: 4;
 }
 .ba-label {
-  position: absolute;
-  bottom: 1rem;
-  padding: 0.3rem 0.8rem;
-  border-radius: 100px;
-  font-family: var(--font-body, sans-serif);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  z-index: 4;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  position: absolute; bottom: 1rem; padding: 0.3rem 0.8rem; border-radius: 100px; font-family: var(--font-body, sans-serif);
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; z-index: 4;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
-.ba-label-before {
-  left: 1rem;
-  background: rgba(0,0,0,0.5);
-  color: #fff;
-}
-.ba-label-after {
-  right: 1rem;
-  background: rgba(255,255,255,0.8);
-  color: #111;
-}
+.ba-label-before { left: 1rem; background: rgba(0,0,0,0.5); color: #fff; }
+.ba-label-after { right: 1rem; background: rgba(255,255,255,0.8); color: #111; }
 .ba-caption {
-  text-align: center;
-  margin-top: 1rem;
-  font-family: var(--font-body, sans-serif);
-  font-size: 0.9rem;
+  text-align: center; margin-top: 1rem; font-family: var(--font-body, sans-serif); font-size: 0.9rem;
   color: rgba(255,255,255,0.78);
 }
-
-@media (max-width: 768px) {
-  .ba-grid { grid-template-columns: 1fr; }
+.ba-controls { display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin-top: 2rem; }
+.ba-arrow {
+  background: none; border: 1px solid rgba(255,255,255,0.25); color: var(--color-text, #fff); width: 44px; height: 44px;
+  border-radius: 50%; cursor: pointer; font-size: 1.3rem; line-height: 1; transition: border-color 0.3s, color 0.3s;
 }
+.ba-arrow:hover { border-color: var(--color-primary, #c4a882); color: var(--color-primary, #c4a882); }
+.ba-dots { display: flex; gap: 0.6rem; }
+.ba-dot {
+  width: 9px; height: 9px; border-radius: 50%; border: none; background: rgba(255,255,255,0.25); cursor: pointer;
+  padding: 0; transition: background 0.3s, transform 0.3s;
+}
+.ba-dot.active { background: var(--color-primary, #c4a882); transform: scale(1.3); }
+.ba-counter {
+  font-family: var(--font-body, sans-serif); font-size: 0.8rem; color: rgba(255,255,255,0.6); letter-spacing: 0.1em;
+  min-width: 3.5rem; text-align: center;
+}
+@media (max-width: 768px) { .ba-item-head { flex-direction: column; gap: 0.25rem; } }
 </style>
 
-<!-- SAMPLE HTML -->
+<!-- SAMPLE HTML (the assembler's fillBeforeAfter generates the real carousel from the before/after pairs) -->
 <section class="ba-section">
   <h2 class="ba-section-title">See the Difference</h2>
-  <div class="ba-grid">
-    <div>
-      <div class="ba-container" data-before-after>
-        <img class="ba-after" src="after-1.jpg" alt="After">
-        <img class="ba-before" src="before-1.jpg" alt="Before">
-        <div class="ba-handle"></div>
-        <span class="ba-label ba-label-before">Before</span>
-        <span class="ba-label ba-label-after">After</span>
+  <div class="ba-carousel">
+    <div class="ba-viewport">
+      <div class="ba-track">
+        <div class="ba-item">
+          <div class="ba-item-head"><span class="ba-item-title">Window replacement — Living room</span><span class="ba-item-tag">Case 01</span></div>
+          <div class="ba-container" data-before-after>
+            <img class="ba-after" src="after-1.jpg" alt="After">
+            <img class="ba-before" src="before-1.jpg" alt="Before">
+            <div class="ba-handle"></div>
+            <span class="ba-label ba-label-before">Before</span>
+            <span class="ba-label ba-label-after">After</span>
+          </div>
+        </div>
       </div>
-      <p class="ba-caption">Window replacement — Living room</p>
     </div>
-    <div>
-      <div class="ba-container" data-before-after>
-        <img class="ba-after" src="after-2.jpg" alt="After">
-        <img class="ba-before" src="before-2.jpg" alt="Before">
-        <div class="ba-handle"></div>
-        <span class="ba-label ba-label-before">Before</span>
-        <span class="ba-label ba-label-after">After</span>
-      </div>
-      <p class="ba-caption">Entry door upgrade — Front entrance</p>
+    <div class="ba-controls">
+      <button class="ba-arrow ba-prev" aria-label="Previous">&#8249;</button>
+      <div class="ba-dots"><button class="ba-dot active" aria-label="Go to 1"></button></div>
+      <button class="ba-arrow ba-next" aria-label="Next">&#8250;</button>
+      <span class="ba-counter">1 / 1</span>
     </div>
   </div>
 </section>
 
 <script>
+// Carousel navigation: slide the track one full-width pair at a time via dots / arrows, update the counter.
+document.querySelectorAll('.ba-carousel').forEach(carousel => {
+  const track = carousel.querySelector('.ba-track');
+  const items = carousel.querySelectorAll('.ba-item');
+  const dots = carousel.querySelectorAll('.ba-dot');
+  const counter = carousel.querySelector('.ba-counter');
+  const prev = carousel.querySelector('.ba-prev');
+  const next = carousel.querySelector('.ba-next');
+  const n = items.length;
+  let idx = 0;
+  function go(i) {
+    idx = (i + n) % n;
+    track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+    dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+    if (counter) counter.textContent = (idx + 1) + ' / ' + n;
+  }
+  dots.forEach((d, k) => d.addEventListener('click', () => go(k)));
+  if (prev) prev.addEventListener('click', () => go(idx - 1));
+  if (next) next.addEventListener('click', () => go(idx + 1));
+  go(0);
+});
+
+// Per-pair draggable before/after divider.
 document.querySelectorAll('[data-before-after]').forEach(container => {
   const before = container.querySelector('.ba-before');
   const handle = container.querySelector('.ba-handle');
   let isDragging = false;
-
   function updatePosition(x) {
     const rect = container.getBoundingClientRect();
     let pos = ((x - rect.left) / rect.width) * 100;
     pos = Math.min(Math.max(pos, 2), 98);
-    before.style.clipPath = `inset(0 ${100 - pos}% 0 0)`;
+    before.style.clipPath = 'inset(0 ' + (100 - pos) + '% 0 0)';
     handle.style.left = pos + '%';
   }
-
   container.addEventListener('mousedown', (e) => { isDragging = true; updatePosition(e.clientX); });
   window.addEventListener('mousemove', (e) => { if (isDragging) { e.preventDefault(); updatePosition(e.clientX); } });
   window.addEventListener('mouseup', () => { isDragging = false; });
-
   container.addEventListener('touchstart', (e) => { isDragging = true; updatePosition(e.touches[0].clientX); }, { passive: true });
   window.addEventListener('touchmove', (e) => { if (isDragging) updatePosition(e.touches[0].clientX); }, { passive: true });
   window.addEventListener('touchend', () => { isDragging = false; });

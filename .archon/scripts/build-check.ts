@@ -187,18 +187,33 @@ function main(): void {
     }
   }
 
-  // ── 8. brands → .brand-logos-track present iff intake.brands non-empty ──
+  // ── 8. brands → .brand-logos-track present IFF intake.brands non-empty (both directions) ──
   const brandNames = asArray(intake?.brands).map((b) => String(b ?? "")).filter(Boolean);
   const hasMarqueeTrack = /class=["'][^"']*brand-logos-track[^"']*["']/.test(html);
+  const hasBrandSection = /class=["'][^"']*brand-logos-section[^"']*["']/.test(html);
   if (brandNames.length && !hasMarqueeTrack) {
     failures.push("intake.brands is non-empty but the page has no .brand-logos-track (brand-logo-marquee missing)");
   }
+  if (!brandNames.length && hasBrandSection) {
+    failures.push("intake.brands is empty but the page still renders a brand-logos-section (must be OMITTED, not an empty div)");
+  }
+  // empty container even when present: a track/section with no .brand-logo-item inside
+  if (hasBrandSection && !/class=["'][^"']*brand-logo-item[^"']*["']/.test(html)) {
+    failures.push("brand-logos-section is present but contains no .brand-logo-item (empty module container)");
+  }
 
-  // ── 9. before/after → .ba-container present iff before_after enabled ──
+  // ── 9. before/after → .ba-container present IFF before_after enabled (both directions) ──
   const baEnabled = enabledFlag(plan?.before_after_enabled) || enabledFlag(plan?.before_after?.enabled);
   const hasBaContainer = /class=["'][^"']*ba-container[^"']*["']/.test(html);
+  const hasBaSection = /class=["'][^"']*ba-(section|carousel)[^"']*["']/.test(html);
   if (baEnabled && !hasBaContainer) {
     failures.push("before_after is enabled but the page has no .ba-container (before-after-slider missing)");
+  }
+  if (!baEnabled && hasBaSection) {
+    failures.push("before_after is disabled but the page still renders a before/after section (must be OMITTED, not an empty div)");
+  }
+  if (hasBaSection && !hasBaContainer) {
+    failures.push("before/after section is present but contains no .ba-container slider (empty module container)");
   }
 
   // ── 10. Last <section> is the CTA/contact ──

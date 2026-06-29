@@ -29,6 +29,14 @@ function styleText(style: unknown): string {
   return "one cohesive cinematic world";
 }
 
+// Sheet-cell duplicate guard: Flux does NOT reliably compose N distinct scenes in one grid — it can draw the
+// dominant scene (often the exterior/facade) in several cells. We crop the rendered sheet and compare cells; any
+// pair below this downscaled-grayscale RMSE is treated as "the same space" and the whole sheet is regenerated
+// with a stronger anti-duplication directive. Calibrated on a real failure (duplicate exterior cells scored
+// 0.13–0.25; the genuinely-distinct interior cell scored 0.30+), so 0.27 catches the dupes with a small margin.
+const SHEET_CELL_RMSE = 0.27;
+const MAX_SHEET_ATTEMPTS = 3;
+
 // Flux-supported aspect ratios, widest→tallest, with their numeric value — we snap the contact sheet's natural
 // rows×cols aspect to the nearest one.
 const ASPECTS: [string, number][] = [
@@ -94,25 +102,61 @@ function main(): void {
   let rows = spec.grid?.rows || Math.ceil(N / cols);
   if (rows * cols < N) { cols = Math.ceil(Math.sqrt(N)); rows = Math.ceil(N / cols); }
 
-  // ---- 1) compose the contact sheet (one Flux call) ----
+  // ---- 1) compose the contact sheet (one Flux call), VERIFYING its cells are actually distinct ----
   const positions = panels.map((_, i) => positionName(Math.floor(i / cols), rows, i % cols, cols));
   const style = styleText(spec.style);
   const header =
-    `A ${rows}-row by ${cols}-column photographic CONTACT SHEET — ${N} DISTINCT scenes that all belong to ONE ` +
-    `world: ${condense(style, 420)}. Each scene fills exactly ONE cell; ${rows * cols} equal-size cells separated ` +
-    `by thin clean dark gutters, no overlap, NO text or numbers. The SAME palette, materials, architecture and ` +
-    `lighting across EVERY cell — one place, one time of day. Photoreal architectural photography, cinematic, ` +
-    `wide-angle framing inside each cell.`;
+    `A ${rows}-row by ${cols}-column photographic CONTACT SHEET / storyboard of ${N} COMPLETELY DIFFERENT spaces ` +
+    `inside ONE building. CRITICAL: every cell must show a DIFFERENT room or view — NO two cells may depict the ` +
+    `same room, facade, door, or angle. Interiors must look clearly INTERIOR, exteriors clearly EXTERIOR, exactly ` +
+    `as labeled per cell. The cells share ONLY the style: ${condense(style, 360)} — same palette, materials and ` +
+    `time-of-day light, but each is a DISTINCT location. ${rows * cols} equal cells, thin dark gutters, no overlap, ` +
+    `NO text or numbers. Photoreal architectural photography, cinematic, wide-angle framing per cell.`;
   const cellLines = panels
     .map((p, i) => `• ${positions[i].toUpperCase()} cell — ${p.scene_label || "scene " + (i + 1)}: ${condense(p.composition || p.nb_prompt || "", 260)}`)
     .join("\n");
   const csPromptFile = `${work}/contact-sheet.prompt.txt`;
-  writeFileSync(csPromptFile, `${header}\n\n${cellLines}\n`);
   const csOut = `${gridDir}/contact-sheet.png`;
   const csAspect = nearestAspect((cols * 16) / (rows * 9));
-  process.stderr.write(`[info] gen-grid-panels: [${section}] composing ${rows}x${cols} contact sheet of ${N} scenes (aspect ${csAspect})\n`);
-  hfImage({ promptFile: csPromptFile, out: csOut, aspect: csAspect, resolution: "2k" });
-  if (!existsSync(csOut)) die(`gen-grid-panels: contact sheet was not generated`);
+
+  // Flux often ignores per-cell instructions and repeats the dominant scene (usually the exterior/facade) across
+  // several cells. So after rendering, CROP the real cells and compare them — if any two are "the same space",
+  // regenerate the whole sheet with a stronger anti-duplication directive. (Checking the SHEET cells, not the
+  // post-isolation panels, is the fix for the earlier false "0 duplicates": isolation hides sheet dupes.)
+  const cellRmse = (a: string, b: string): number => {
+    const r = run(magick, ["compare", "-metric", "RMSE", "-resize", "32x18!", "-colorspace", "Gray", a, b, "null:"], { timeoutMs: 30000 });
+    const m = (r.stderr + r.stdout).match(/\(([0-9.eE+-]+)\)/); const v = m ? Number(m[1]) : NaN; return Number.isFinite(v) ? v : 1;
+  };
+  const duplicateCellPairs = (csPath: string): string[] => {
+    const d = run(magick, ["identify", "-format", "%w %h", csPath], { timeoutMs: 20000 }).stdout.trim().split(/\s+/).map(Number);
+    const W = d[0], H = d[1]; if (!W || !H) return [];
+    const cw2 = Math.floor(W / cols), ch2 = Math.floor(H / rows);
+    const files = panels.map((p, i) => {
+      const f = `${gridDir}/.cellchk-${i}.png`;
+      run(magick, [csPath, "-crop", `${cw2}x${ch2}+${(i % cols) * cw2}+${Math.floor(i / cols) * ch2}`, "+repage", f], { timeoutMs: 30000 });
+      return f;
+    });
+    const dups: string[] = [];
+    for (let i = 0; i < files.length; i++)
+      for (let j = i + 1; j < files.length; j++)
+        if (cellRmse(files[i], files[j]) < SHEET_CELL_RMSE) dups.push(`${panels[i].id}~${panels[j].id}`);
+    return dups;
+  };
+
+  let dupPairs: string[] = [], csAttempt = 0;
+  do {
+    csAttempt++;
+    const retry = csAttempt > 1
+      ? `\n\nRETRY ${csAttempt}: the previous sheet REPEATED a space across cells — that is a FAILURE. Make ABSOLUTELY every cell a different room/view; never repeat the entry, facade, or door; interiors clearly interior, exteriors clearly exterior.`
+      : "";
+    writeFileSync(csPromptFile, `${header}\n\n${cellLines}${retry}\n`);
+    process.stderr.write(`[info] gen-grid-panels: [${section}] composing ${rows}x${cols} contact sheet of ${N} scenes (attempt ${csAttempt}/${MAX_SHEET_ATTEMPTS}, aspect ${csAspect})\n`);
+    hfImage({ promptFile: csPromptFile, out: csOut, aspect: csAspect, resolution: "2k" });
+    if (!existsSync(csOut)) die(`gen-grid-panels: contact sheet was not generated`);
+    dupPairs = duplicateCellPairs(csOut);
+    if (dupPairs.length) process.stderr.write(`[warn] gen-grid-panels: contact-sheet cells look duplicated (${dupPairs.join(", ")}) on attempt ${csAttempt}\n`);
+  } while (dupPairs.length && csAttempt < MAX_SHEET_ATTEMPTS);
+  if (dupPairs.length) process.stderr.write(`[warn] gen-grid-panels: contact sheet STILL has near-duplicate cells after ${MAX_SHEET_ATTEMPTS} attempts (${dupPairs.join(", ")}); per-cell isolation will redraw each from its own prompt, but this grid should be reviewed.\n`);
 
   // ---- 2) crop into cells, isolate + upscale each via Flux (image→image) ----
   const dimOut = run(magick, ["identify", "-format", "%w %h", csOut], { timeoutMs: 20000 }).stdout.trim().split(/\s+/).map(Number);

@@ -27,11 +27,21 @@ This node runs AFTER the panels are generated and the grid is composed.
    panel image** at `$ARTIFACTS_DIR/scenes/<SECTION>-grid/<panel-id>.png`.
 
 ## Phase 2: OBSERVE (look carefully — report only what you see)
-- **Single or double?** One door leaf, or a double/paired door?
-- **WHICH EDGE IS THE HANDLE / PULL / LEVER ON?** Look at the door leaf and find the handle (often a long
-  vertical pull bar on a pivot door). Is it on the **LEFT** edge or the **RIGHT** edge of the leaf? Pick the
-  one it is closest to. If you genuinely cannot tell, say `"unclear"`.
-- That's it. Do NOT state a hinge side or a swing direction — those are computed from the handle side in code.
+- **Single or double? LOOK CAREFULLY — this is the most-missed call.** Count the door LEAVES (moving panels) and
+  the handles:
+  - **DOUBLE** if you see TWO leaves meeting at a vertical seam down the MIDDLE, OR **two pull handles side by
+    side near the center** (one just left of the centerline, one just right). A double/paired door is wider and
+    symmetric, with the seam/handles in the middle. **If in any doubt between single and double, and the handles
+    sit in the middle rather than at one edge, call it `"double"`.**
+  - **SINGLE** only if there is clearly ONE leaf with ONE handle near ONE edge.
+  A double door read as single is exactly the bug that makes the flythrough hallucinate the door — so err toward
+  `"double"` when you see a centered pair of handles.
+- **WHICH EDGE IS THE HANDLE / PULL / LEVER ON?** (single doors only — skip for a double, where it is `"n/a"`.)
+  Look at the single leaf and find the handle (often a long vertical pull bar on a pivot door). Is it on the
+  **LEFT** edge or the **RIGHT** edge of the leaf? Pick the one it is closest to. If you genuinely cannot tell,
+  say `"unclear"`.
+- That's it. Do NOT state a hinge side or a swing direction — those are computed in code (a single door from the
+  handle side; a double door parts from the center).
 
 ## Phase 3: REPORT — return the schema AND write the file
 Return the node's `output_format` JSON and ALSO write the identical object to

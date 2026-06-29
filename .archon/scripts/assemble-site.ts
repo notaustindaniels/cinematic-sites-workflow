@@ -166,7 +166,7 @@ function fillBrandLogoMarquee(markup: string, slots: any, brandNames: string[]):
   if (!items.length && brandNames.length) {
     items = brandNames.map((n) => ({ name: n }));
   }
-  if (!items.length) return markup; // keep vendored sample
+  if (!items.length) return ""; // NO brands → omit the module entirely (never emit an empty vendored <section>)
 
   const renderItem = (it: any) => {
     const name = esc(str(it?.name));
@@ -233,28 +233,44 @@ interface BaPair {
 function fillBeforeAfter(markup: string, slots: any, pairs: BaPair[]): string {
   const title = str(slots?.title) || "See the Difference";
   const use = pairs.length ? pairs : [];
-  if (!use.length) return markup; // keep vendored sample
-  const cards = use
-    .map((p) => {
+  if (!use.length) return ""; // NO pairs → omit the module entirely (never emit an empty vendored <section>)
+  // CAROUSEL: one full-width before/after pair at a time, navigated by dots/arrows + a "i / N" counter; each pair
+  // is a draggable slider (the module's <script> wires both). Controls only appear when there is more than one.
+  const items = use
+    .map((p, i) => {
       const after = esc(p.after);
       const before = esc(p.before);
-      const caption = esc(p.caption);
-      return `    <div>
-      <div class="ba-container" data-before-after>
-        <img class="ba-after" src="${after}" alt="After">
-        <img class="ba-before" src="${before}" alt="Before">
-        <div class="ba-handle"></div>
-        <span class="ba-label ba-label-before">Before</span>
-        <span class="ba-label ba-label-after">After</span>
-      </div>
-      <p class="ba-caption">${caption}</p>
-    </div>`;
+      const caption = esc(p.caption) || `Transformation ${i + 1}`;
+      const tag = `Case ${String(i + 1).padStart(2, "0")}`;
+      return `        <div class="ba-item">
+          <div class="ba-item-head"><span class="ba-item-title">${caption}</span><span class="ba-item-tag">${tag}</span></div>
+          <div class="ba-container" data-before-after>
+            <img class="ba-after" src="${after}" alt="After">
+            <img class="ba-before" src="${before}" alt="Before">
+            <div class="ba-handle"></div>
+            <span class="ba-label ba-label-before">Before</span>
+            <span class="ba-label ba-label-after">After</span>
+          </div>
+        </div>`;
     })
     .join("\n");
+  const controls = use.length > 1
+    ? `    <div class="ba-controls">
+      <button class="ba-arrow ba-prev" aria-label="Previous">&#8249;</button>
+      <div class="ba-dots">${use.map((_, i) => `<button class="ba-dot${i === 0 ? " active" : ""}" aria-label="Go to ${i + 1}"></button>`).join("")}</div>
+      <button class="ba-arrow ba-next" aria-label="Next">&#8250;</button>
+      <span class="ba-counter">1 / ${use.length}</span>
+    </div>`
+    : "";
   return `<section class="ba-section">
   <h2 class="ba-section-title">${esc(title)}</h2>
-  <div class="ba-grid">
-${cards}
+  <div class="ba-carousel">
+    <div class="ba-viewport">
+      <div class="ba-track">
+${items}
+      </div>
+    </div>
+${controls}
   </div>
 </section>`;
 }
@@ -424,6 +440,11 @@ function renderModule(
       filled = fillGeneric(markup, slots);
       break;
   }
+
+  // If the filler omitted the module (no real content), render NOTHING — no empty <section> container, and no
+  // orphan styles/scripts for a module that isn't on the page. This is the guard against empty before/after &
+  // brand-marquee divs when before/after is disabled or there are no brands.
+  if (!filled.trim()) return null;
 
   // Patch entrance-reveal scripts to bidirectional where required.
   const patchedScripts = BIDIRECTIONAL_MODULES.has(name)
