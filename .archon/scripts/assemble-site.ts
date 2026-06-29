@@ -686,7 +686,10 @@ function main(): void {
   const moduleStyles = rendered.flatMap((r) => r.styles).join("\n");
   const moduleMarkup = rendered.map((r) => `<!-- module: ${r.name} -->\n${r.markup}`).join("\n\n");
 
-  const styleBlocks = [rootCss, designCss, showcaseCss, moduleStyles].filter(Boolean).join("\n\n");
+  // ORDER MATTERS: design-system.css ships its own :root{} of generic fallbacks, so it must come FIRST and the
+  // brand :root{} (rootCss) SECOND — otherwise the design-system fallbacks (white, Georgia) override the brand
+  // (gold, Cormorant Garamond) and the page renders generic + can tank contrast. Brand wins as the last :root.
+  const styleBlocks = [designCss, rootCss, showcaseCss, moduleStyles].filter(Boolean).join("\n\n");
 
   // Core (non-module) scripts each get their own <script>. Each MODULE'S scripts are
   // wrapped in their OWN <script data-module="name"> so build-check can scope the
