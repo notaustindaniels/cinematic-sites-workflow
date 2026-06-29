@@ -1,17 +1,18 @@
 # Cinematic Hero — Archon Sub-Workflow PLAN (hero video ONLY)
 
-> **⚠ UPDATE — AS BUILT (supersedes the single-image palette below): the hero uses the 2-PANEL GRID method.**
-> Real-run testing showed a single image + a camera move kept fighting Seedance (start-frame disrespect, fly-out
-> through glass, exterior-crane default). Per user direction, the hero is now built exactly like the SHOWCASE,
-> scaled down: an intake interview decides what the hero showcases → the opus Director designs **TWO same-style
-> numbered panels** (panel 1 = the start of the hero moment, panel 2 = the landing / feature scene) + ONE tight
-> ~5s move → the 2 panels composite into ONE numbered 1920×1080 grid → Seedance renders ONE continuous ~5-second
-> arrival (no timestamps, no negatives). This routes the hero through the PROVEN grid pipeline, so an
-> exterior→interior arrival (e.g. approach → front door opens → into the great room, settling on the fireplace)
-> renders CLEAN. The treatment ideas below still inform WHAT the 2 panels depict, but the render is always the
-> 2-panel grid. See `cinematic-hero.yaml`, `hero-intake.md`, `hero-director.md`, `hero-compose.ts`, `gen-hero.ts`,
-> and `rubrics/hero.md` for the as-built design. The single-image treatment-palette spec below is retained as
-> design rationale only.
+> **⚠ UPDATE — AS BUILT (supersedes everything below): the hero uses the START+END method.** The hero is a single
+> A→B arrival (exterior → interior), so it does NOT use a composited grid or a hand-rolled palette. It reuses the
+> **showcase Director** and ALL its prompting lessons — the opus Director designs EXACTLY **2 same-style panels**
+> (panel 1 = the START frame, panel 2 = the END frame) + one Seedance prompt, self-critiqued against
+> `rubrics/grid.md` (grid/heading path read-back, wide-FOV cone, no-glimpse, **zero-remnants**: each panel shows
+> only its own space — the entry door lives in panel 1 only, the interior panel carries no door). `door-check`
+> observes the rendered handle and `door-swing` rewrites the swing deterministically. Then **`gen-hero-2frame.ts`
+> feeds Seedance panel 1 as `--start-image` and panel 2 as `--end-image`** (duration ~5s) and it interpolates the
+> journey between them — locking onto both frames and landing softer than the grid. A storyboard grid is still
+> composited for `door-check` + human review, but it is NOT the render input. See `cinematic-hero.yaml`,
+> `commands/showcase-director.md`, `rubrics/grid.md`, and `scripts/gen-hero-2frame.ts` for the as-built design.
+> (History: a single-image palette and then a 2-panel grid were tried first; both are superseded. Everything below
+> is retained as design rationale only.)
 
 **A focused spec for ONE thing: the above-the-fold *hero* background video — for ANY business.** The opus Director
 picks a **dramatic cinematic TREATMENT** from a palette and renders it with a known-safe Seedance recipe. The

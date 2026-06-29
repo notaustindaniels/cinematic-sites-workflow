@@ -8,6 +8,19 @@ state-checks are not your job; these are the judgment checks the Director must s
 - [ ] **Consistent world/materials/palette/lighting.** Every panel's `nb_prompt` anchors the SAME building,
   materials, palette, and time-of-day. A panel that drifts (different mood, materials, or time of day) is FAIL.
 - [ ] **Distinct compositions.** Each panel is a genuinely different vantage/space (not near-duplicates).
+- [ ] **ZERO REMNANTS — each panel shows ONLY its own space, no element of an ADJACENT scene (prior OR next).**
+  Two checks, both must pass:
+  - **(a) No NEXT scene's subject** (even small / through glass) — the deck seen through the kitchen glass (with a
+    different railing) forced the kitchen→deck morph. The kitchen frames its island/the mountains, not the deck; a
+    window that would reveal a later scene is re-angled onto open landscape. (Only pass: the path goes STRAIGHT
+    into that next space with no turn between.)
+  - **(b) No PRIOR scene's element — above all the DOOR/entry.** A room entered through a door must be framed from
+    WITHIN it (its own focal point), NEVER "from the threshold / doorway / just inside the entry" (that frames the
+    door into the shot — it rendered as a DOUBLE door in the great room while the exterior was a SINGLE door, and
+    Seedance hallucinated the door changing). The entry door appears in the APPROACH panel ONLY; **FAIL any
+    interior panel framed from a threshold, or whose `nb_prompt` does not explicitly exclude doors/entry**
+    ("no doors, no entry or threshold in frame").
+  Quote the panel and the offending element/clause.
 - [ ] **panels.length == grid.cols × grid.rows.**
 
 ## B. The path is a coherent, paradox-free journey (the hard part)
@@ -28,6 +41,11 @@ state-checks are not your job; these are the judgment checks the Director must s
   already shown — Seedance re-renders it as a wrong room. FAIL such a sequence (and FAIL a "fix" that would
   create one — flag that the path itself must be restructured, e.g. via a doorway or a level change).
 - [ ] **Never faces/re-enters a seen space.** "turns back / looks back / returns to / re-enters" = FAIL.
+- [ ] **The route survives a GRID/HEADING read-back, accounting for the WIDE FOV.** Trace the path cell by cell:
+  at every step, neither the camera's heading NOR its wide peripheral cone (~45° each side, plus anything sitting
+  BESIDE the new space with no wall between) may land on a previously-shown space. A turn whose FINAL heading is
+  "new" but whose SWEEP crosses a seen space — or that opens beside a seen space in an open plan — is FAIL; the fix
+  is to restructure via a doorway or level change that walls the cone off the seen, not to re-word the turn.
 
 ## C. The prompt is tight and clean
 - [ ] **Short:** ~50–80 words / **under ~500 characters**. A long, over-detailed prompt is FAIL.

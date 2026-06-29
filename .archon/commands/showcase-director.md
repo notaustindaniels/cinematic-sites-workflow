@@ -64,6 +64,22 @@ a real cinematographer:
   physically cannot see back. Prefer these whenever you want a dramatic change of direction without risking the
   open-plan reversal.
 
+**Make the route an EXPLICIT, written GRID PLAN — like a top-down game board — not just a mental picture.** Lay
+the home out as a grid of cells with compass directions (N/S/E/W, plus level). Drop each scene into a cell and
+note which way the camera FACES while there. Then write the move sequence between cells as discrete steps
+(`forward`, `90° left`, `90° right`, `up`, `down`) and **LOG THE HEADING after each step**. Read your own log back
+like a game: at no step may the camera's heading land on — or its wide view sweep across — a cell you have already
+shown. If it does, the route is broken; reorder the cells or route through a wall/level until the log is clean.
+This written read-back catches the paradox your imagination glosses over (it is exactly how the kitchen ended up
+facing the already-shown deck).
+
+**Account for the WIDE FOV — Seedance sees a wide cone, not a narrow line.** The frame catches roughly 45° to EACH
+side of where the camera points, so "my final heading is a new room" is NOT enough: the **sweep** of a turn, and
+whatever sits BESIDE the new space with no wall between, are also on screen — and if any of that is a seen/known
+space, Seedance re-paints it (wrongly) to reconcile. Keep the whole cone on unseen territory: prefer a turn
+THROUGH a doorway or a level change (a physical wall/floor clips the cone off the seen) over an open swivel in a
+big open plan.
+
 Balance **creativity** (wind the path, reveal the unseen, use the whole 3D home) against **Seedance's appetite
 for paradox** (never face the seen) — and still distill it into a SHORT, tight prompt. That tension is the art.
 
@@ -89,13 +105,35 @@ Rules for the panels:
    passes THROUGH a door or window, depict that portal **closed** in its panel. For a door, make it
    unambiguously a **single door** (not a double/paired door) with a discernible handle and hinge side, so the
    flythrough can open that one door the correct way. The viewpoint never passes through a shut door or solid
-   glass; the opening actuates as it arrives.
+   glass; the opening actuates as it arrives. **That door belongs to this ONE approach panel ONLY** — the room
+   on the far side (the next panel, entered through it) must show NO door (see Zero Remnants, #6).
+6. **ZERO REMNANTS — each panel shows ONLY its own space, with NO element of any ADJACENT scene (the one BEFORE
+   or the one AFTER).** The panels are generated independently, so ANY element shared between two panels renders
+   DIFFERENTLY in each, and Seedance hallucinates the mismatch as the camera crosses between them. Two cases,
+   both forbidden:
+   - **No NEXT scene's subject** (even small, even through glass): the kitchen frames its island and the
+     mountains, NOT the deck; the great room frames its fireplace, NOT the kitchen beyond. If a window would
+     reveal a later scene's space, angle the shot so the glass frames open landscape (peaks, trees, sky) instead.
+     (ONLY exception: a panel may show the immediate next space if the path then goes STRAIGHT into it with NO
+     turn between — the glimpse and the arrival are then the same view.)
+   - **No PRIOR scene's element — above all the DOOR / entry / threshold you came through.** Once the camera is
+     inside a room, the entry door is BEHIND it. Compose every room from WITHIN it, looking at its OWN focal point
+     (the fireplace, the island) — NEVER "from the threshold / doorway / just inside the entry," which frames the
+     door back into the shot. The entry door belongs to EXACTLY ONE panel — the approach — and **NO other panel
+     may show a door, threshold, or entry**: an independently-generated door renders as a DOUBLE door in the room
+     while the exterior is a SINGLE door, so the camera hallucinates the door changing across the cut.
+   In each interior panel's `nb_prompt`, EXPLICITLY exclude the adjacent elements the same way you exclude the
+   other rooms — e.g. for the great room: "no doors, no entry or threshold in frame; kitchen not visible; deck
+   not visible."
 
 ## Phase 4: WRITE THE FLYTHROUGH PROMPT — short, tight, path-focused (not camera-focused)
 ONE prompt that moves a single continuous viewpoint through the panels' spaces, in order. Think orchestra
 conductor: concise and commanding, naming the path — NOT a description of every material, and NOT a description
 of the camera rig. An over-detailed prompt makes Seedance hit-or-miss; a tight one lands.
 **HARD RULES:**
+- **Narrate the EXACT move sequence from your Phase-2 grid plan** — the same ordered bounded turns and headings
+  you logged, nothing improvised. The prompt is the read-out of the route you already verified conflict-free, not
+  a fresh path invented here.
 - **KEEP IT SHORT AND TIGHT — aim for ~50–80 words, 3–4 sentences.** (For scale: ~350–500 characters, not
   1500.) Brevity is the point.
 - **Do NOT describe how the camera is shot.** No "FPV drone", no "handheld", no "stabilized", no "cinematic
@@ -185,8 +223,15 @@ Return the node's `output_format` JSON and also write the identical object to
 ```
 
 ### PHASE_5_CHECKPOINT
-- [ ] You plotted the 3D path and tracked the camera heading; no turn faces a space already shown (no two
-      same-direction turns that reverse into the seen in an open plan); bold direction changes use doorways/levels.
+- [ ] You wrote the GRID PLAN and read the heading log back: at no step does the camera's heading OR its wide
+      peripheral cone (~45° each side) land on a space already shown; no two same-direction turns reverse into the
+      seen in an open plan; bold direction changes use doorways/levels to wall the cone off the seen.
+- [ ] ZERO REMNANTS — each panel shows ONLY its own space, no element of an adjacent scene either direction:
+      (a) no NEXT scene's subject (even through glass — re-angle a revealing window onto open landscape; only pass
+      is a straight-in-no-turn next space); (b) no PRIOR scene's element — above all the DOOR/entry: each room is
+      framed from WITHIN (its own focal point), NEVER "from the threshold"; the door is in the approach panel ONLY
+      and no interior panel shows a door, and each interior `nb_prompt` explicitly excludes "no doors, no entry/
+      threshold in frame."
 - [ ] `panels.length == grid.cols * grid.rows`; panels ordered as the journey path (any level is fine).
 - [ ] Every panel's `nb_prompt` carries the SAME style/world/lighting; each panel is a DISTINCT composition.
 - [ ] The flythrough writes each turn as a TWO-BEAT move — a BOUNDED ANGLE + direction to FACE the next space,
