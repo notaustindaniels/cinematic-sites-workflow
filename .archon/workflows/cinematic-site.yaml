@@ -516,41 +516,20 @@ nodes:
       fresh_context: true
       until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/grid-verdict-passed.ts'
 
-  - id: panel-flatten
-    script: panel-flatten
+  - id: gen-grid-panels
+    # QUADRIPTYCH METHOD: compose ONE contact sheet of all N scenes in a single Flux call (drawn together → the
+    # scenes are DISTINCT and COHESIVE by construction — a duplicate is structurally impossible), then crop and
+    # ISOLATE + UPSCALE each cell into a clean full-res still. Replaces the per-panel anchored loop that could
+    # silently echo a duplicate. Deterministic — no AI-in-the-loop.
+    script: gen-grid-panels
     runtime: bun
     depends_on: [refine-loop]   # panels only generate AFTER the spec converges to PASS
-    timeout: 30000
-
-  - id: panel-gen
-    depends_on: [panel-flatten]
-    idle_timeout: 1200000
-    loop:
-      prompt: |
-        FRESH iteration — no memory. State lives in $ARTIFACTS_DIR/showcase/plan.json. The panel prompts were
-        ALREADY WRITTEN by the Director — you do NOT write, improve, or change any prompt. You ONLY execute.
-        IMPORTANT: every plan-step.ts call MUST be prefixed `ARTIFACTS_DIR="$ARTIFACTS_DIR"` — copy verbatim.
-
-        1. Next panel:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next showcase
-           If it prints NONE → output <promise>PANELS_DONE</promise> and stop.
-        2. Parse the item JSON: id, refs[], out, prompt, scene_label.
-        3. Write the item's prompt VERBATIM to $ARTIFACTS_DIR/showcase/<id>.prompt.txt — do NOT edit it.
-        4. Generate the panel (Flux.2 Pro, 2k):
-           - with a ref (style anchor):  bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --image <refs[0]> --resolution 2k
-           - first panel (no ref):       bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --resolution 2k
-        5. If the output image exists, mark done:
-             ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --mark-done showcase <id>
-           If generation errored transiently, do NOT mark done — end the turn so it retries next iteration.
-        6. Do exactly ONE panel per iteration, then end your turn.
-      until: PANELS_DONE
-      max_iterations: 24
-      fresh_context: true
-      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done showcase'
+    timeout: 900000
 
   - id: panel-dedup
-    script: panel-dedup        # GUARD: no two showcase panels may be the same scene; regenerate a duplicate (no anchor)
+    script: panel-dedup        # BACKSTOP: contact-sheet panels are distinct by construction; this still verifies + regenerates any drift
     runtime: bun
-    depends_on: [panel-gen]
+    depends_on: [gen-grid-panels]
     timeout: 700000
 
   - id: compose-grid

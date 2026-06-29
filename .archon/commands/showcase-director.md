@@ -48,7 +48,18 @@ absent, SECTION = `showcase`.** SECTION decides two things:
   those spaces in that order. **If there is no plan.json** (you are running standalone) choose the subject space
   and journey yourself.
 - Choose the **subject space** (e.g. a luxury home) and a **spatial path** through it that reads as one
-  continuous journey. Plan **4 panels** (a 2×2 grid) unless the brief — or the plan's scene count — wants fewer/more.
+  continuous journey. Plan **EXACTLY 4 panels** in a **2×2 grid** (`grid: {cols:2, rows:2}`) for the showcase —
+  this is the clean quadriptych layout the renderer needs (see next note). Only deviate if the plan's scene count
+  forces it.
+- **HOW THE PANELS ARE RENDERED (design for this).** The 4 panels are NOT generated one-by-one. They are drawn
+  **together in ONE image** — a single 2×2 **contact sheet** (quadriptych) — and then each cell is isolated and
+  upscaled into its own still. This is deliberate: because all four scenes are composed in one generation, they
+  are **distinct by construction** (no two cells can collapse into the same room) and **perfectly cohesive** (one
+  palette, one light, one architecture). For this to work, your four panels must be **four unmistakably DIFFERENT
+  spaces** (e.g. exterior approach · great room · kitchen · covered deck — never two angles of the same room), and
+  your top-level `style` field must capture the shared world (palette, materials, light, time-of-day) crisply,
+  since it becomes the contact sheet's cohesion instruction. Each panel's `scene_label` + `composition` become
+  that cell's description, and its full `nb_prompt` drives the isolation/upscale — so write all three well.
 
 ## Phase 2: FIRST BUILD THE 3D SPACE AND THE PATH IN YOUR HEAD (Hollywood-director mode)
 
