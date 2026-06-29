@@ -40,7 +40,7 @@ nodes:
     depends_on: [preflight]
     when: "$preflight.output.higgsfield == 'true'"
     context: fresh
-    model: opus
+    model: claude-opus-4-8
     skills: [cinematic-site-kit-higgsfield]
     output_format:
       type: object
@@ -147,10 +147,16 @@ nodes:
       fresh_context: true
       until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done showcase'
 
+  - id: panel-dedup
+    script: panel-dedup        # GUARD: no two panels may be the same scene; regenerate a duplicate (no anchor)
+    runtime: bun
+    depends_on: [panel-gen]
+    timeout: 700000
+
   - id: compose-grid
     script: compose-grid
     runtime: bun
-    depends_on: [panel-gen]
+    depends_on: [panel-dedup]
     timeout: 120000
 
   # DOOR — the reliability piece the hand-rolled hero lacked. door-check (vision) reports which side the handle is

@@ -55,6 +55,17 @@ content `<section>`s in order, ending with the CTA section. **HARD RULES:**
 - **Generous, responsive spacing** — use `clamp()` for section padding and type (e.g.
   `padding: clamp(4rem,10vh,9rem) clamp(1.5rem,6vw,6rem)`). Every section needs comfortable horizontal padding
   on BOTH sides (no flush-left text — that was a bug). At least one `clamp()` must appear in your CSS.
+- **NEVER cramp text into a narrow column** (this is the #1 layout failure). Every text/copy column must be a
+  COMFORTABLE reading width — target a line length of ~45–75 characters (about `min(92vw, 34–48rem)`). A column
+  where words wrap one-per-line, or text squeezed into a sliver beside a large empty area, is BROKEN. Concretely:
+  - In a two-column section (copy + image), the copy column must be SUBSTANTIAL (≈ a `1fr 1fr` split or copy
+    even wider — never `0.4fr` text + a giant image, and never text confined to ~1/4 of the width with dead
+    space). Both columns earn real width.
+  - Do NOT nest grids/flex/columns in a way that collapses a child to near-zero width (e.g. a `grid` inside an
+    already-narrow cell, or a fixed tiny track). Process "steps" / numbered lists belong in a row or a wide
+    column, not a thin stack of one-word lines.
+  - Use the FULL content width on purpose — fill it or center it; never leave a huge dead zone beside cramped
+    text. A section that's all bunched on the left with empty right half is a FAIL.
 - **Legibility**: never set text opacity below `0.7`. Ensure contrast against the dark background.
 - **Images**: every photo is `<img src="images/<id>.png" ...>` (or a CSS `background-image:url('images/<id>.png')`)
   using ONLY the generated ids. Add descriptive `alt`. No external URLs anywhere.

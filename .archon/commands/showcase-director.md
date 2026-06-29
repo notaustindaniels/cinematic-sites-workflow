@@ -111,6 +111,15 @@ Rules for the panels:
    time-of-day. Use identical style language in every `nb_prompt` so the panels read as one place — otherwise
    the flythrough will morph between mismatched spaces. (There are no element-states to track here; a panel just
    depicts its space naturally — e.g. an exterior with the entry door, a great room, a kitchen, a deck.)
+1b. **INJECT THE BRAND PALETTE into every `nb_prompt` (image ↔ page cohesion — do not skip this).** The generated
+   images must share the same color world as the website's CSS, the way the skill's sites do. Read
+   `brand-system.json`'s palette (`color_bg`, `color_primary`, `color_secondary`, `color_accent`, `color_text`),
+   `theme_direction`, and `mood`, and translate them into concrete photographic COLOR LANGUAGE that appears in
+   EVERY panel prompt — the dominant color temperature, the light quality, and the material/finish tones that
+   carry those hues. E.g. a warm gold/cream palette → "warm golden-hour light, honey-toned timber, cream-grey
+   stone, deep amber interior glow"; a cool slate palette → "cool overcast light, blue-grey stone, blackened
+   steel, muted desaturated tones". The hero, showcase, and section imagery must all read as ONE palette with the
+   page — never a generic stock color language disconnected from the brand.
 2. **Each panel is a DISTINCT composition** — a real, different vantage/space along the path (exterior → great
    room → kitchen → deck), not near-duplicates.
 3. **Order = a WINDING journey, not a straight shot.** Panel 1 is where the camera starts; the last panel is the
