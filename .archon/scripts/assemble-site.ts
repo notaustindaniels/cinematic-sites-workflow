@@ -214,7 +214,7 @@ function fillStaggerGrid(markup: string, slots: any): string {
   if (!items.length) return markup;
   const cells = items
     .map((it) => {
-      const img = esc(str(it?.img));
+      const img = esc(resolveImg(it?.img));
       const title = esc(str(it?.title, ""));
       const desc = esc(str(it?.desc, ""));
       const imgTag = img ? `<img class="item-img" src="${img}" alt="${title}">` : "";
@@ -259,16 +259,25 @@ ${cards}
 </section>`;
 }
 
+/** Resolve a site-plan image reference. "img:<id>" -> the generated image at images/<id>.png (relative to
+ *  site/index.html — the site-images loop wrote $A/site/images/<id>.png). Anything else is returned as-is. This
+ *  is how generated business imagery replaces the modules' vendored stock placeholders. */
+function resolveImg(v: unknown): string {
+  const s = str(v).trim();
+  const m = /^img:(.+)$/i.exec(s);
+  return m ? `images/${m[1].trim()}.png` : s;
+}
+
 /** Parallax Sections: fill the heading (slots.heading) and body copy
  *  (slots.text — string OR array of paragraphs), and optionally swap the background
- *  image (slots.image). Preserves the bg/overlay/divider markup + parallax JS hooks.
+ *  image (slots.image -> resolveImg). Preserves the bg/overlay/divider markup + parallax JS hooks.
  *  Function replacers are used so copy containing "$" (e.g. "$8,000") is safe. */
 function fillParallaxSections(markup: string, slots: any): string {
   if (!slots || typeof slots !== "object") return markup;
   const heading = str(slots.heading);
   const arr = asArray<string>(slots.text).map((p) => str(p)).filter(Boolean);
   const bodyParas = arr.length ? arr : (str(slots.text) ? [str(slots.text)] : []);
-  const image = str(slots.image);
+  const image = resolveImg(slots.image);
   let out = markup;
   if (heading) {
     out = out.replace(/(<h2[^>]*>)[\s\S]*?(<\/h2>)/i, (_m, open, close) => `${open}${esc(heading)}${close}`);
@@ -651,48 +660,27 @@ function main(): void {
       .split("__SHOWCASE_OVERLAYS__").join(jsonAttr(overlays));
   }
 
-  // ── Modules ──
-  // Start from the site-plan modules, then enforce the mandatory ones.
-  const planModules = asArray(sitePlan?.modules).map((m: any) =>
-    typeof m === "string" ? { name: m, slots: {} } : { name: str(m?.name), slots: m?.slots ?? {} },
-  ).filter((m) => m.name);
+  // ── Modules: ONLY the mandatory, JS-heavy ones stay deterministic (brand-logo-marquee if brands exist,
+  //    before-after-slider if enabled — their drag/marquee JS is fiddly). EVERYTHING else — the content
+  //    sections, their imagery, the layout, spacing, and the CTA — is now AI-CRAFTED in $A/site/content.html
+  //    (the opus site-build command), so the page reads like the skill's hand-built sites, not a template stitch. ──
+  const planModules: { name: string; slots: any }[] = [];
+  if (brandNames.length) planModules.push({ name: "brand-logo-marquee", slots: { items: brandNames.map((n) => ({ name: n })) } });
+  if (baEnabled) planModules.push({ name: "before-after-slider", slots: {} });
 
-  // MANDATORY: brands present → brand-logo-marquee; before/after enabled → before-after-slider.
-  const haveModule = (n: string) => planModules.some((m) => m.name === n);
-  if (brandNames.length && !haveModule("brand-logo-marquee")) {
-    planModules.push({ name: "brand-logo-marquee", slots: { items: brandNames.map((n) => ({ name: n })) } });
-  }
-  if (baEnabled && !haveModule("before-after-slider")) {
-    planModules.push({ name: "before-after-slider", slots: {} });
-  }
-
-  // Render, deduping single-instance modules.
   const rendered: RenderedModule[] = [];
-  const seenSingle = new Set<string>();
   for (const m of planModules) {
-    if (SINGLE_INSTANCE.has(m.name)) {
-      if (seenSingle.has(m.name)) continue;
-      seenSingle.add(m.name);
-    }
     const r = renderModule(m.name, m.slots, { brandNames, baPairs });
     if (r) rendered.push(r);
   }
 
-  // ── Content sections + nav + CTA ──
+  // ── nav (deterministic) + the AI-crafted content body ──
   const navLinks = asArray<string>(sitePlan?.nav_links).map((l) => str(l)).filter(Boolean);
   const navHtml = buildNav(str(brand?.business_name) || "", navLinks);
 
-  // The CTA section IS the contact area. Pull any "contact" content section out of the generic content list so we
-  // don't render two #contact sections (duplicate id), and reuse its AI-written copy as the CTA sub-line.
-  const allSections = asArray(sitePlan?.sections);
-  const contactSec = allSections.find((s: any) => /contact/i.test(str(s?.key)));
-  const contentSections = allSections
-    .filter((s: any) => s !== contactSec)
-    .map((s: any) => buildContentSection(str(s?.key), str(s?.copy)))
-    .join("\n");
-
-  const ctaSub = str(contactSec?.copy) || str(brand?.hero_line) || str(brand?.tagline);
-  const ctaHtml = buildCtaSection(sitePlan?.cta, intake?.contact, str(intake?.service_area), ctaSub);
+  const contentPath = `${siteDir}/content.html`;
+  if (!existsSync(contentPath)) die(`assemble-site: AI-crafted content body not found at ${contentPath} — run the site-build command first (it writes the content sections + CTA).`);
+  const aiBody = readFile(contentPath);
 
   // ── Assemble <head> styles + <body> scripts ──
   const moduleStyles = rendered.flatMap((r) => r.styles).join("\n");
@@ -737,9 +725,7 @@ ${showcaseSection}
 
 ${moduleMarkup}
 
-${contentSections}
-
-${ctaHtml}
+${aiBody}
 
 ${scriptBlocks}
 </body>

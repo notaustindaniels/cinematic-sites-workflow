@@ -8,14 +8,16 @@
 import { existsSync, readFileSync } from "node:fs";
 import { writeJSON, die } from "./lib/util.ts";
 
-type ListName = "showcase" | "beforeafter" | "hero";
+type ListName = "showcase" | "beforeafter" | "hero" | "site-images";
 
 function isList(s: string): s is ListName {
-  return s === "showcase" || s === "beforeafter" || s === "hero";
+  return s === "showcase" || s === "beforeafter" || s === "hero" || s === "site-images";
 }
 
 function planPath(A: string, list: ListName): string {
-  return `${A}/${list}/plan.json`;
+  // site-images lives under site/ (the built page reads images/<id>.png relative to site/index.html)
+  const sub = list === "site-images" ? "site/images" : list;
+  return `${A}/${sub}/plan.json`;
 }
 
 function loadItems(A: string, list: ListName): { path: string; data: any; items: any[] } {

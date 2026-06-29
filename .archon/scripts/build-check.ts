@@ -123,10 +123,25 @@ function main(): void {
     }
   }
 
-  // ── 5. ≥3 modules present ──
-  const moduleCount = (html.match(/<!--\s*module:\s*[\w-]+\s*-->/g) || []).length;
-  if (moduleCount < 3) {
-    failures.push(`fewer than 3 modules present (found ${moduleCount})`);
+  // ── 5. ≥3 content <section>s present (hero + showcase + the AI-crafted content body). Also guards that the
+  //    site-build content body was actually injected — an empty/missing body would leave only hero/showcase. ──
+  const sectionCount = (html.match(/<section\b/gi) || []).length;
+  if (sectionCount < 3) {
+    failures.push(`fewer than 3 <section>s present (found ${sectionCount}) — the AI-crafted content body may be missing`);
+  }
+
+  // ── 5b. NO stock / external / placeholder images (the food-photo failure). Every image must be a generated
+  //    local asset (images/<id>.png or assets/…). Any external http(s) image, or any unsplash/pexels/placeholder
+  //    reference in a src/background, FAILS. ──
+  const stockHits = new Set<string>();
+  for (const m of html.matchAll(/(?:src=["']|url\(\s*["']?)(https?:\/\/[^"')\s]+)/gi)) {
+    const u = m[1];
+    if (/\.(jpg|jpeg|png|webp|avif|gif|svg)(\?|$)/i.test(u) || /unsplash|pexels|placeholder|placehold|picsum|loremflickr/i.test(u)) {
+      stockHits.add(u.slice(0, 80));
+    }
+  }
+  if (stockHits.size) {
+    failures.push(`external/stock image(s) present — use only generated images/<id>.png: ${[...stockHits].slice(0, 3).join(", ")}`);
   }
 
   // ── 6. No unobserve(/disconnect( inside stagger-grid/reveal entrance blocks ──

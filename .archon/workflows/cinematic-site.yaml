@@ -699,12 +699,64 @@ nodes:
             button_label: { type: string }
           required: [headline, button_label]
         use_looping_hero: { type: string, enum: ['true', 'false'] }
+        images:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              prompt: { type: string }
+              usage: { type: string }
+            required: [id, prompt]
       required: [sections, modules, cta]
+
+  # Generate the business-specific section images the plan requested (no stock). Mirrors panel-gen:
+  # site-images-flatten -> a work list at $A/site/images/plan.json; the loop runs hf-image.ts (Flux) per image.
+  - id: site-images-flatten
+    script: site-images-flatten
+    runtime: bun
+    depends_on: [site-plan]
+    timeout: 30000
+
+  - id: site-images
+    depends_on: [site-images-flatten]
+    idle_timeout: 1200000
+    loop:
+      prompt: |
+        FRESH iteration — no memory. State lives in $ARTIFACTS_DIR/site/images/plan.json. The image prompts were
+        ALREADY WRITTEN by site-plan — you do NOT change any prompt; you ONLY execute. Every plan-step.ts call MUST
+        be prefixed `ARTIFACTS_DIR="$ARTIFACTS_DIR"`.
+
+        1. Next image:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next site-images
+           If it prints NONE → output <promise>IMAGES_DONE</promise> and stop.
+        2. Parse the item JSON: id, out, prompt.
+        3. Write the item's prompt VERBATIM to $ARTIFACTS_DIR/site/images/<id>.prompt.txt — do NOT edit it.
+        4. Generate (Flux.2 Pro, 2k, 16:9):
+           bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --resolution 2k
+        5. If the output image exists:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --mark-done site-images <id>
+           If generation errored transiently, do NOT mark done — end the turn so it retries.
+        6. Do exactly ONE image per iteration, then end your turn.
+      until: IMAGES_DONE
+      max_iterations: 12
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done site-images'
+
+  # AI-CRAFTED content body (replaces the template-stitched sections). An opus designer-developer writes the
+  # content sections + CTA as bespoke HTML/CSS, using the generated section images + brand variables, with full
+  # layout latitude per the interview input. The assembler then wraps it with the sacred scroll-frame hero/
+  # showcase engine + head + nav (which it still wires deterministically).
+  - id: site-build
+    command: site-build
+    depends_on: [site-images]
+    context: fresh
+    model: opus
+    skills: [cinematic-site-kit-higgsfield]
+    allowed_tools: [Read, Write]
 
   - id: assemble-site
     script: assemble-site
     runtime: bun
-    depends_on: [site-plan]
+    depends_on: [site-build]
     timeout: 120000
 
   - id: build-check
@@ -742,8 +794,12 @@ nodes:
         prompt: |
           Address the build-check failures ($ARTIFACTS_DIR/site/build-check.json), the critic reasons
           ($ARTIFACTS_DIR/site/site-verdict.json), and this human feedback: $REJECTION_REASON.
-          Edit ONLY via the site plan + assembler — update $ARTIFACTS_DIR/site/site-plan.json then re-run
-          `bun .archon/scripts/assemble-site.ts` and `bun .archon/scripts/build-check.ts`. Never hand-edit index.html.
+          For CONTENT/LAYOUT/imagery tweaks: edit the AI-crafted body at $ARTIFACTS_DIR/site/content.html directly
+          (follow the .archon/commands/site-build.md rules — brand vars, generated images/<id>.png only, no stock,
+          `reveal` class, both-side padding, CTA last). For a NEW image, add it to $ARTIFACTS_DIR/site/site-plan.json
+          `images[]`, run `bun .archon/scripts/site-images-flatten.ts`, generate it with `bun .archon/scripts/hf-image.ts`,
+          then reference `images/<id>.png` in content.html. Then ALWAYS re-run `bun .archon/scripts/assemble-site.ts`
+          and `bun .archon/scripts/build-check.ts`. Never hand-edit index.html (the assembler regenerates it).
         max_attempts: 5
     depends_on: [build-check, site-critic]
 
