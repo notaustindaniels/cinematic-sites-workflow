@@ -12,7 +12,7 @@
 // and report expect). Same hard guards as gen-flythrough/gen-hero: no timestamp/per-second beats, balanced
 // Director emphasis passed through (stripped only if malformed).
 import { existsSync, readFileSync } from "node:fs";
-import { artifactsDir, writeText, ensureDirFor, die, isDryRun } from "./lib/util.ts";
+import { artifactsDir, sectionPaths, writeText, ensureDirFor, die, isDryRun } from "./lib/util.ts";
 import { hfVideo } from "./hf-video.ts";
 
 interface Panel { id: string }
@@ -40,7 +40,8 @@ function hasTimestamp(p: string): boolean {
 
 async function main(): Promise<void> {
   const A = artifactsDir();
-  const specPath = `${A}/showcase/grid-spec.json`;
+  const { work, gridDir, videoOut } = sectionPaths(A);   // no marker (standalone) -> showcase paths; cinematic-site hero -> $A/hero + scenes/hero/hero-final.mp4
+  const specPath = `${work}/grid-spec.json`;
   if (!existsSync(specPath)) die(`gen-hero-2frame: grid-spec.json not found at ${specPath}`);
 
   let spec: GridSpec;
@@ -62,18 +63,17 @@ async function main(): Promise<void> {
   }
   prompt = safeEmphasis(prompt);
 
-  // The panels are the same images compose-grid/door-check use: $A/scenes/showcase-grid/<id>.png.
-  const dir = `${A}/scenes/showcase-grid`;
-  const startImage = `${dir}/${panels[0].id}.png`;
-  const endImage = `${dir}/${panels[1].id}.png`;
+  // The panels are the same images compose-grid/door-check use: $A/scenes/<section>-grid/<id>.png.
+  const startImage = `${gridDir}/${panels[0].id}.png`;
+  const endImage = `${gridDir}/${panels[1].id}.png`;
   if (!existsSync(startImage)) die(`gen-hero-2frame: START panel image not found at ${startImage} (run panel-gen first)`);
   if (!existsSync(endImage)) die(`gen-hero-2frame: END panel image not found at ${endImage} (run panel-gen first)`);
 
   const duration = clampDuration(spec.duration);
-  const promptFile = `${A}/showcase/flythrough.prompt.txt`;
+  const promptFile = `${work}/flythrough.prompt.txt`;
   writeText(promptFile, prompt);
 
-  const out = `${A}/scenes/showcase/showcase-video.mp4`;
+  const out = videoOut;
   ensureDirFor(out);
 
   process.stderr.write(`[info] gen-hero-2frame: Seedance start(${panels[0].id}) + end(${panels[1].id}) -> ${out} (duration=${duration}s, dry=${isDryRun()})\n`);

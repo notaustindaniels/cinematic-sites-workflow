@@ -8,10 +8,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { writeJSON, die } from "./lib/util.ts";
 
-type ListName = "showcase" | "beforeafter";
+type ListName = "showcase" | "beforeafter" | "hero";
 
 function isList(s: string): s is ListName {
-  return s === "showcase" || s === "beforeafter";
+  return s === "showcase" || s === "beforeafter" || s === "hero";
 }
 
 function planPath(A: string, list: ListName): string {
@@ -53,7 +53,7 @@ function main(): void {
 
   if (flag === "--next") {
     const list = argv[1];
-    if (!list || !isList(list)) die(`plan-step --next: <list> must be showcase|beforeafter`);
+    if (!list || !isList(list)) die(`plan-step --next: <list> must be showcase|beforeafter|hero`);
     const { items } = loadItems(A, list);
     const item = firstPending(items);
     if (!item) {
@@ -66,7 +66,7 @@ function main(): void {
 
   if (flag === "--all-done") {
     const list = argv[1];
-    if (!list || !isList(list)) die(`plan-step --all-done: <list> must be showcase|beforeafter`);
+    if (!list || !isList(list)) die(`plan-step --all-done: <list> must be showcase|beforeafter|hero`);
     const { items } = loadItems(A, list);
     const pending = items.some((it) => it && it.status !== "done");
     // exit 0 iff no pending remain.
@@ -76,7 +76,7 @@ function main(): void {
   if (flag === "--mark-done") {
     const list = argv[1];
     const id = argv[2];
-    if (!list || !isList(list)) die(`plan-step --mark-done: <list> must be showcase|beforeafter`);
+    if (!list || !isList(list)) die(`plan-step --mark-done: <list> must be showcase|beforeafter|hero`);
     if (!id) die(`plan-step --mark-done: <id> is required`);
     const { path, data, items } = loadItems(A, list);
     let found = false;

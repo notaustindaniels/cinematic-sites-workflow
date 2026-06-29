@@ -17,6 +17,25 @@ This node runs with **fresh context** — load everything from files.
 
 ---
 
+## Phase 0: SECTION — are you the HERO or the SHOWCASE director?
+FIRST, read `$ARTIFACTS_DIR/.cine-section` (its trimmed contents are `hero` or `showcase`). **If the file is
+absent, SECTION = `showcase`.** SECTION decides two things:
+- **WHERE you write.** Use `$ARTIFACTS_DIR/<SECTION>/grid-spec.json` and `$ARTIFACTS_DIR/scenes/<SECTION>-grid/`
+  everywhere below — NOT a literal `showcase` (e.g. SECTION=`hero` → `$ARTIFACTS_DIR/hero/grid-spec.json`).
+- **The MODE:**
+  - **SHOWCASE MODE (`showcase`)** — the full multi-scene tour, exactly as Phases 1–5 describe (4 panels / a 2×2
+    grid by default; rendered later as ONE composited grid).
+  - **HERO MODE (`hero`)** — the above-the-fold HERO: a single START→END arrival rendered from TWO frames (not a
+    grid). Override the panel count: design **EXACTLY 2 panels** — **panel 1 = the START**, an exterior approach to
+    the building's SINGLE front entrance (door CLOSED); **panel 2 = the END**, the primary interior "hero" space
+    (the main great room / signature living space), framed from WITHIN (zero-remnants: NO door/entry in shot). Set
+    `grid` to `{cols:2, rows:1}`. For the subject + mood, read `$ARTIFACTS_DIR/brand/brand-system.json` and, if
+    present, the `hero` block of `$ARTIFACTS_DIR/plan.json` (`hero.reference_prompt` is the subject hint); IGNORE
+    `showcase.scenes`. Set `duration` to `plan.hero.duration` if present, else `5`. **Everything else below — the
+    spatial path discipline (grid/heading read-back, wide-FOV cone, no-glimpse, ZERO-REMNANTS, the single-door
+    handling, phrase emphasis, the tight prompt) — applies UNCHANGED.** The flythrough still opens the single door
+    and travels into the great room; door-check + door-swing still set the swing.
+
 ## Phase 1: LOAD
 - If `$ARTIFACTS_DIR/brand/brand-system.json` exists, read it (palette, materials, mood). If
   `$ARTIFACTS_DIR/intake.json` exists, read it (business, the space to showcase). Otherwise derive from the
@@ -206,7 +225,8 @@ of the camera rig. An over-detailed prompt makes Seedance hit-or-miss; a tight o
 
 ## Phase 5: GENERATE — return the schema AND write `grid-spec.json`
 Return the node's `output_format` JSON and also write the identical object to
-`$ARTIFACTS_DIR/showcase/grid-spec.json` (convention #2). Shape:
+`$ARTIFACTS_DIR/<SECTION>/grid-spec.json` (convention #2; SECTION from Phase 0 — e.g. `hero` →
+`$ARTIFACTS_DIR/hero/grid-spec.json`). Shape:
 
 ```jsonc
 {
@@ -245,7 +265,8 @@ Return the node's `output_format` JSON and also write the identical object to
       flythrough/aerial/drone/fly/soar/FPV/handheld/stabilized — just "the camera fov"), NO duration/timestamp,
       NO negatives, NO material dump** (the panels carry those).
 - [ ] `duration` is an integer (default 15; Seedance max 15).
-- [ ] `$ARTIFACTS_DIR/showcase/grid-spec.json` written, identical to the returned JSON.
+- [ ] `$ARTIFACTS_DIR/<SECTION>/grid-spec.json` written (SECTION from Phase 0), identical to the returned JSON.
+- [ ] If SECTION=`hero`: EXACTLY 2 panels [start exterior approach, end interior], `grid` is `{cols:2, rows:1}`.
 
 ## Phase 6: REPORT
 Return the JSON. One-line note: # panels, the grid layout, the spatial path, and confirm the flythrough prompt

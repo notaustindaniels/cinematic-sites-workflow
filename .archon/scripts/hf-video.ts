@@ -71,9 +71,9 @@ export function hfVideo(opts: HfVideoOpts): string {
 
   const r = run("higgsfield", args, { timeoutMs: 1300000 });
   const url = parseHiggsfieldUrl(r.stdout) || parseHiggsfieldUrl(r.stderr);
-  // Runtime/network failures THROW (not die/exit) so multi-variant callers like
-  // gen-hero-video can catch one bad variant and still ship the good ones. The
-  // CLI entry below catches and exits 1, preserving subprocess semantics.
+  // Runtime/network failures THROW (not die/exit) so a multi-variant caller can catch
+  // one bad variant and still ship the good ones. The CLI entry below catches and
+  // exits 1, preserving subprocess semantics.
   if (!url) {
     throw new Error(`hf-video: could not parse result_url from higgsfield output (exit ${r.code}).\n--- stdout ---\n${r.stdout}\n--- stderr ---\n${r.stderr}`);
   }

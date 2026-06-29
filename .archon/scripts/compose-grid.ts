@@ -7,7 +7,7 @@
 // (e.g. 2776x1572 from a raw montage) silently fails the upload. So we always montage then resize/pad to
 // EXACTLY 1920x1080. Panels are placed in grid reading order (left→right, top→bottom) = the journey order.
 import { existsSync, readFileSync } from "node:fs";
-import { artifactsDir, ensureDirFor, run, magickBin, ffprobe, die } from "./lib/util.ts";
+import { artifactsDir, sectionPaths, ensureDirFor, run, magickBin, ffprobe, die } from "./lib/util.ts";
 
 interface Panel { id: string }
 interface GridSpec { panels?: Panel[]; grid?: { cols?: number; rows?: number } }
@@ -44,7 +44,8 @@ function stampNumber(magick: string, src: string, dst: string, n: number): strin
 
 function main(): void {
   const A = artifactsDir();
-  const specPath = `${A}/showcase/grid-spec.json`;
+  const { work, gridDir } = sectionPaths(A);   // hero -> $A/hero + scenes/hero-grid; default showcase
+  const specPath = `${work}/grid-spec.json`;
   if (!existsSync(specPath)) die(`compose-grid: grid-spec.json not found at ${specPath}`);
 
   let spec: GridSpec;
@@ -57,7 +58,7 @@ function main(): void {
   const panels: Panel[] = Array.isArray(spec.panels) ? spec.panels : [];
   if (panels.length === 0) die(`compose-grid: no panels in grid-spec.json`);
 
-  const dir = `${A}/scenes/showcase-grid`;
+  const dir = gridDir;
   const paths = panels.map((p) => `${dir}/${p.id}.png`);
   const missing = paths.filter((p) => !existsSync(p));
   if (missing.length) die(`compose-grid: ${missing.length} panel image(s) missing: ${missing.join(", ")}`);

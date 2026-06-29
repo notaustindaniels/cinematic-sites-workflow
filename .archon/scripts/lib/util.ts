@@ -1,5 +1,5 @@
 // Shared helpers for the cinematic-site [DET] scripts. Runtime: bun.
-import { mkdirSync, existsSync, writeFileSync } from "node:fs";
+import { mkdirSync, existsSync, writeFileSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -10,6 +10,39 @@ export function artifactsDir(): string {
     die("ARTIFACTS_DIR not set (and no argv[2] fallback provided).");
   }
   return a;
+}
+
+/** The active cinematic SECTION — "hero" or "showcase" — whose paths this script should use.
+ *  Source of truth is the marker file $A/.cine-section that a workflow phase writes; env CINE_SECTION
+ *  overrides it (for local testing). DEFAULTS to "showcase" when there is no marker, so every existing
+ *  standalone/showcase invocation is byte-identical to before this parameterization. */
+export function cineSection(a?: string): string {
+  const env = (process.env.CINE_SECTION || "").trim().toLowerCase();
+  if (env === "hero" || env === "showcase") return env;
+  const A = a || process.env.ARTIFACTS_DIR || process.argv[2];
+  if (A) {
+    try {
+      const m = readFileSync(`${A}/.cine-section`, "utf8").trim().toLowerCase();
+      if (m === "hero" || m === "showcase") return m;
+    } catch { /* no marker → default below */ }
+  }
+  return "showcase";
+}
+
+/** Per-section artifact paths. The work dir ($A/<section>/) holds grid-spec.json / plan.json /
+ *  door-obs.json / grid-verdict.json; the grid dir ($A/scenes/<section>-grid/) holds the <id>.png panels
+ *  and grid.png. The final video path differs by section: hero -> scenes/hero/hero-final.mp4 (what
+ *  extract-frames expects), showcase -> scenes/showcase/showcase-video.mp4. */
+export function sectionPaths(A: string, section?: string): {
+  section: string; work: string; gridDir: string; videoOut: string;
+} {
+  const sec = section || cineSection(A);
+  return {
+    section: sec,
+    work: `${A}/${sec}`,
+    gridDir: `${A}/scenes/${sec}-grid`,
+    videoOut: sec === "hero" ? `${A}/scenes/hero/hero-final.mp4` : `${A}/scenes/${sec}/${sec}-video.mp4`,
+  };
 }
 
 /** mkdir -p the directory that will contain `file`. */

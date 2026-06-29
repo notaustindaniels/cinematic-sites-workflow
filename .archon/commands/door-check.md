@@ -17,11 +17,14 @@ just OBSERVE; don't reason about hinges or swings.
 This node runs AFTER the panels are generated and the grid is composed.
 
 ## Phase 1: LOAD
-1. Read `$ARTIFACTS_DIR/showcase/grid-spec.json` — note `panels[]` and the `flythrough_prompt`.
+0. **SECTION:** read `$ARTIFACTS_DIR/.cine-section` (trimmed contents `hero` or `showcase`); if the file is
+   absent, SECTION=`showcase`. Use `$ARTIFACTS_DIR/<SECTION>/` and `$ARTIFACTS_DIR/scenes/<SECTION>-grid/` below
+   (e.g. SECTION=`hero` → `$ARTIFACTS_DIR/hero/...` and `$ARTIFACTS_DIR/scenes/hero-grid/...`).
+1. Read `$ARTIFACTS_DIR/<SECTION>/grid-spec.json` — note `panels[]` and the `flythrough_prompt`.
 2. Does the flight path pass through a hinged DOOR (the prompt mentions a door swinging/opening — a pivot door,
    entry door)? If it mentions ONLY sliding glass or no portal, set `hinged_door:"no"` and stop.
 3. If there is a hinged door, find the panel that depicts it (usually the first/entry panel). **Read (view) that
-   panel image** at `$ARTIFACTS_DIR/scenes/showcase-grid/<panel-id>.png`.
+   panel image** at `$ARTIFACTS_DIR/scenes/<SECTION>-grid/<panel-id>.png`.
 
 ## Phase 2: OBSERVE (look carefully — report only what you see)
 - **Single or double?** One door leaf, or a double/paired door?
@@ -32,7 +35,7 @@ This node runs AFTER the panels are generated and the grid is composed.
 
 ## Phase 3: REPORT — return the schema AND write the file
 Return the node's `output_format` JSON and ALSO write the identical object to
-`$ARTIFACTS_DIR/showcase/door-obs.json`:
+`$ARTIFACTS_DIR/<SECTION>/door-obs.json` (SECTION from Phase 1.0):
 ```json
 { "hinged_door": "yes" | "no",
   "door_panel": "<panel id, or ''>",

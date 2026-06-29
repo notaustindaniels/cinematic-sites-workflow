@@ -10,12 +10,13 @@
 //   handle LEFT   ⇒ hinge RIGHT ⇒ swings open to the RIGHT
 // (This is exactly the case the vision model kept getting backwards.)
 import { existsSync, readFileSync } from "node:fs";
-import { artifactsDir, writeJSON, die } from "./lib/util.ts";
+import { artifactsDir, sectionPaths, writeJSON, die } from "./lib/util.ts";
 
 function main(): void {
   const A = artifactsDir();
-  const obsPath = `${A}/showcase/door-obs.json`;
-  const specPath = `${A}/showcase/grid-spec.json`;
+  const { work } = sectionPaths(A);   // hero -> $A/hero; default showcase
+  const obsPath = `${work}/door-obs.json`;
+  const specPath = `${work}/grid-spec.json`;
 
   if (!existsSync(specPath)) die(`door-swing: grid-spec.json not found at ${specPath}`);
   if (!existsSync(obsPath)) {

@@ -5,14 +5,15 @@
 // reads as one house. Prompts are pre-written by the Director; flatten does not compose any prompt.
 // Compatible with plan-step.ts (--next/--mark-done/--all-done).
 import { existsSync, readFileSync } from "node:fs";
-import { artifactsDir, writeJSON, die } from "./lib/util.ts";
+import { artifactsDir, sectionPaths, writeJSON, die } from "./lib/util.ts";
 
 interface Panel { id: string; scene_label?: string; composition?: string; nb_prompt?: string }
 interface GridSpec { panels?: Panel[]; grid?: { cols?: number; rows?: number } }
 
 function main(): void {
   const A = artifactsDir();
-  const specPath = `${A}/showcase/grid-spec.json`;
+  const { work, gridDir } = sectionPaths(A);   // hero -> $A/hero + scenes/hero-grid; default showcase
+  const specPath = `${work}/grid-spec.json`;
   if (!existsSync(specPath)) die(`panel-flatten: grid-spec.json not found at ${specPath}`);
 
   let spec: GridSpec;
@@ -25,7 +26,7 @@ function main(): void {
   const panels: Panel[] = Array.isArray(spec.panels) ? spec.panels : [];
   if (panels.length === 0) die(`panel-flatten: grid-spec.json has no panels[]`);
 
-  const dir = `${A}/scenes/showcase-grid`;
+  const dir = gridDir;
   const outOf = (id: string) => `${dir}/${id}.png`;
 
   const items = panels.map((p, i) => {
@@ -43,7 +44,7 @@ function main(): void {
     };
   });
 
-  writeJSON(`${A}/showcase/plan.json`, { items });
+  writeJSON(`${work}/plan.json`, { items });
   process.stdout.write(`panel-flatten: ${items.length} panel work-items (grid ${spec.grid?.cols ?? "?"}x${spec.grid?.rows ?? "?"})\n`);
   process.exit(0);
 }

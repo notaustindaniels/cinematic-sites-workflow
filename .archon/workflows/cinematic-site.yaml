@@ -247,153 +247,184 @@ nodes:
         max_attempts: 5
     depends_on: [plan-critic, plan-flatten]
 
-  # ════════════════════════════════ E. HERO SCENE (always) ════════════════════════════════
-  - id: hero-ref-prompt
-    command: hero-ref-prompt
+  # ═══════════════════ E. HERO — above-the-fold START+END arrival (runs FIRST, always) ═══════════════════
+  # The hero is a single A->B arrival. It REUSES the showcase Director + ALL its lessons (grid/heading path,
+  # no-glimpse, zero-remnants, single-door handling) but renders from TWO frames — panel 1 = START, panel 2 = END
+  # — not a composited grid. It shares the grid scripts/commands via the $ARTIFACTS_DIR/.cine-section MARKER:
+  # hero-set-marker writes "hero", so every script + the Director + door-check resolve $A/hero, scenes/hero-grid,
+  # and the final video lands at scenes/hero/hero-final.mp4 (what extract-frames reads). The hero is serialized
+  # BEFORE the showcase (showcase-set-marker flips the marker back to "showcase" after hero-gate) so the global
+  # marker is never raced.
+  - id: hero-set-marker
+    bash: |
+      mkdir -p "$ARTIFACTS_DIR/hero" "$ARTIFACTS_DIR/scenes/hero-grid" "$ARTIFACTS_DIR/scenes/hero"
+      printf 'hero' > "$ARTIFACTS_DIR/.cine-section"
+      echo "cine-section -> hero (hero phase)"
     depends_on: [plan-gate]
+
+  - id: hero-director
+    command: showcase-director
+    depends_on: [hero-set-marker]
     context: fresh
+    model: opus
     skills: [cinematic-site-kit-higgsfield]
     output_format:
       type: object
       properties:
-        prompt: { type: string }
-      required: [prompt]
-
-  - id: hero-ref-gen
-    script: gen-hero-ref
-    runtime: bun
-    depends_on: [hero-ref-prompt]
-    timeout: 600000
-    retry:
-      max_attempts: 2
-      delay_ms: 5000
-
-  - id: hero-director-brief
-    command: hero-director-brief
-    depends_on: [hero-ref-gen]
-    context: fresh
-    skills: [cinematic-site-kit-higgsfield]
-    output_format:
-      type: object
-      properties:
-        product: { type: string }
-        hero_moment: { type: string }
-        camera_start: { type: string }
-        camera_path: { type: string }
-        camera_end: { type: string }
-        transforms: { type: array, items: { type: string }, minItems: 2 }
-        start_frame_prompt: { type: string }
-        end_frame_prompt: { type: string }
-        want_end_frame: { type: string, enum: ['true', 'false'] }
-        needs_new_start_frame: { type: string, enum: ['true', 'false'] }
-      required: [product, hero_moment, camera_start, camera_path, camera_end, transforms, start_frame_prompt, end_frame_prompt, want_end_frame, needs_new_start_frame]
-
-  - id: brief-critic
-    prompt: |
-      You are a strict Director's-Brief critic. Read the rubric at
-      .archon/assets/cinematic/rubrics/director-brief.md and apply it VERBATIM. Judge
-      $ARTIFACTS_DIR/scenes/hero/director-brief.json. FAIL if the hero_moment is just a closer crop of
-      the reference (no transformation), or if camera_path lacks real travel through space. Write the
-      verdict to $ARTIFACTS_DIR/scenes/hero/brief-verdict.json, then return the same verdict.
-    depends_on: [hero-director-brief]
-    context: fresh
-    allowed_tools: [Read, Write]
-    output_format:
-      type: object
-      properties:
-        verdict: { type: string, enum: [PASS, FAIL] }
-        reasons: { type: array, items: { type: string } }
-        fixes: { type: array, items: { type: string } }
-      required: [verdict, reasons, fixes]
-
-  - id: hero-end-frame-gen
-    script: gen-hero-end
-    runtime: bun
-    depends_on: [hero-director-brief]
-    when: "$hero-director-brief.output.want_end_frame == 'true'"
-    timeout: 600000
-    retry:
-      max_attempts: 2
-      delay_ms: 5000
-
-  - id: hero-video-prompt
-    command: hero-video-prompt
-    depends_on: [hero-director-brief]
-    context: fresh
-    skills: [cinematic-site-kit-higgsfield]
-    output_format:
-      type: object
-      properties:
-        opening_scene: { type: string }
-        beats:
+        style: { type: object }
+        grid:
+          type: object
+          properties:
+            cols: { type: integer, minimum: 1, maximum: 2 }
+            rows: { type: integer, minimum: 1, maximum: 1 }
+          required: [cols, rows]
+        panels:                       # hero = a START+END pair: EXACTLY 2 panels (panel 1 = start, panel 2 = end)
           type: array
-          minItems: 4
+          minItems: 2
+          maxItems: 2
           items:
             type: object
             properties:
-              t: { type: string }
-              camera_motion: { type: string }
-              subject_motion: { type: string }
-            required: [t, camera_motion, subject_motion]
-        camera_path_summary: { type: string }
-        negatives: { type: string }
-      required: [opening_scene, beats, camera_path_summary, negatives]
+              id: { type: string }
+              scene_label: { type: string }
+              composition: { type: string }
+              nb_prompt: { type: string }
+            required: [id, composition, nb_prompt]
+        flythrough_prompt: { type: string }
+        duration: { type: integer, minimum: 4, maximum: 15 }
+      required: [style, grid, panels, flythrough_prompt, duration]
 
-  - id: prompt-critic
-    prompt: |
-      You are a strict hero-video-prompt critic. Read the rubric at
-      .archon/assets/cinematic/rubrics/video-prompt.md and apply it VERBATIM. Judge
-      $ARTIFACTS_DIR/scenes/hero/video-prompt.json. FAIL if any beat lacks camera motion through space,
-      if it reads as a loop, or if the stability/no-morph negatives are missing. Write the verdict to
-      $ARTIFACTS_DIR/scenes/hero/prompt-verdict.json, then return the same verdict.
-    depends_on: [hero-video-prompt]
+  - id: hero-refine-loop
+    depends_on: [hero-director]
+    idle_timeout: 600000
+    loop:
+      prompt: |
+        You are the HERO Director acting as your own STRICT critic-and-reviser. Converge the 2-panel start/end
+        spec to clean BEFORE any panel is generated. State lives in $ARTIFACTS_DIR/hero/grid-spec.json and
+        $ARTIFACTS_DIR/hero/grid-verdict.json. Original brief: $ARGUMENTS
+
+        1. CRITIQUE — read $ARTIFACTS_DIR/hero/grid-spec.json and apply the rubric at
+           .archon/assets/cinematic/rubrics/grid.md VERBATIM and strictly. For the hero ALSO verify: EXACTLY 2
+           panels [panel 1 = exterior approach to a SINGLE closed front door; panel 2 = the primary interior
+           framed from WITHIN with NO door/entry in shot — ZERO-REMNANTS]; the flythrough opens the single door
+           and TRAVELS into the interior toward a glass/feature wall; tight (<500 chars); no rig/aircraft words;
+           no timestamps; phrase-level backtick emphasis balanced. Write your honest verdict
+           {verdict,reasons[],fixes[]} to $ARTIFACTS_DIR/hero/grid-verdict.json.
+        2. REVISE — if FAIL, edit $ARTIFACTS_DIR/hero/grid-spec.json to fix EVERY reason, then re-write
+           $ARTIFACTS_DIR/hero/grid-verdict.json for the revised spec.
+        3. SIGNAL — only if it now genuinely PASSes every check, output <promise>SPEC_OK</promise>. Otherwise end
+           your turn and you will iterate again.
+        Do NOT generate any images. Only read/edit grid-spec.json and grid-verdict.json.
+      until: SPEC_OK
+      max_iterations: 5
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/grid-verdict-passed.ts'
+
+  - id: hero-panel-flatten
+    script: panel-flatten      # reads the marker -> $A/hero/grid-spec.json -> $A/hero/plan.json
+    runtime: bun
+    depends_on: [hero-refine-loop]
+    timeout: 30000
+
+  - id: hero-panel-gen
+    depends_on: [hero-panel-flatten]
+    idle_timeout: 1200000
+    loop:
+      prompt: |
+        FRESH iteration — no memory. State lives in $ARTIFACTS_DIR/hero/plan.json. The panel prompts were ALREADY
+        WRITTEN by the Director — you do NOT change any prompt; you ONLY execute. Every plan-step.ts call MUST be
+        prefixed `ARTIFACTS_DIR="$ARTIFACTS_DIR"`.
+
+        1. Next panel:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --next hero
+           If it prints NONE → output <promise>PANELS_DONE</promise> and stop.
+        2. Parse the item JSON: id, refs[], out, prompt, scene_label.
+        3. Write the item's prompt VERBATIM to $ARTIFACTS_DIR/hero/<id>.prompt.txt — do NOT edit it.
+        4. Generate the panel (Flux.2 Pro, 2k):
+           - with a ref (style anchor):  bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --image <refs[0]> --resolution 2k
+           - first panel (no ref):       bun .archon/scripts/hf-image.ts --prompt-file <pf> --out <out> --resolution 2k
+        5. If the output image exists:  ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --mark-done hero <id>
+           If generation errored transiently, do NOT mark done — end the turn so it retries.
+        6. Do exactly ONE panel per iteration, then end your turn.
+      until: PANELS_DONE
+      max_iterations: 8
+      fresh_context: true
+      until_bash: 'ARTIFACTS_DIR="$ARTIFACTS_DIR" bun .archon/scripts/plan-step.ts --all-done hero'
+
+  - id: hero-compose
+    script: compose-grid       # reads the marker -> composites $A/scenes/hero-grid/{p1,p2}.png -> grid.png (door-check + review)
+    runtime: bun
+    depends_on: [hero-panel-gen]
+    timeout: 120000
+
+  - id: hero-door-check
+    command: door-check
+    depends_on: [hero-compose]
     context: fresh
+    model: opus
     allowed_tools: [Read, Write]
     output_format:
       type: object
       properties:
-        verdict: { type: string, enum: [PASS, FAIL] }
-        reasons: { type: array, items: { type: string } }
-        fixes: { type: array, items: { type: string } }
-      required: [verdict, reasons, fixes]
+        hinged_door: { type: string, enum: [yes, no] }
+        door_panel: { type: string }
+        single_or_double: { type: string, enum: [single, double, n/a] }
+        handle_side: { type: string, enum: [left, right, unclear, n/a] }
+      required: [hinged_door, handle_side]
+
+  - id: hero-door-swing
+    script: door-swing         # reads the marker -> rewrites the door clause in $A/hero/grid-spec.json
+    runtime: bun
+    depends_on: [hero-door-check]
+    timeout: 20000
+
+  - id: hero-grid-gate
+    approval:
+      message: |
+        STEP 1 (HERO STORYBOARD) — review the 2 panels BEFORE the paid render. Open
+        $ARTIFACTS_DIR/scenes/hero-grid/grid.png: panel 1 = the START frame (exterior approach to the single
+        door), panel 2 = the END frame (the interior landing). At render, Seedance gets panel 1 and panel 2 as the
+        start/end frames (this grid is only for THIS review + door-check, not the render input) and interpolates
+        between them under $ARTIFACTS_DIR/hero/grid-spec.json.flythrough_prompt (already a PASS verdict via the
+        auto-revise loop). door-swing has set the single-door swing DETERMINISTICALLY from the observed handle
+        side. Approve to render the ~5s hero, or reject naming the panel(s) to regenerate.
+      capture_response: true
+      on_reject:
+        prompt: |
+          For the panels named: $REJECTION_REASON — reset their status to "pending" in
+          $ARTIFACTS_DIR/hero/plan.json (and if the prompt itself needs changing, edit that panel's nb_prompt in
+          $ARTIFACTS_DIR/hero/grid-spec.json then re-run `bun .archon/scripts/panel-flatten.ts`). Regenerate the
+          reset panel(s) via `bun .archon/scripts/hf-image.ts` using their pre-written prompt, then re-run
+          `bun .archon/scripts/compose-grid.ts` to rebuild the grid.
+        max_attempts: 5
+    depends_on: [hero-compose, hero-door-swing]
 
   - id: hero-gen
-    script: gen-hero-video
+    script: gen-hero-2frame    # reads the marker -> renders start(p1)+end(p2) -> $A/scenes/hero/hero-final.mp4
     runtime: bun
-    depends_on: [hero-video-prompt, hero-end-frame-gen]
-    # one_success (not none_failed_*): the end-frame is OPTIONAL, so a failed
-    # hero-end-frame-gen must NOT block hero-gen — as long as hero-video-prompt
-    # succeeded, generate from the start frame alone. gen-hero-video uses the
-    # end frame only if end-frame.png exists.
-    trigger_rule: one_success
-    timeout: 3600000
+    depends_on: [hero-grid-gate]
+    timeout: 1500000
     retry:
       max_attempts: 2
       delay_ms: 8000
 
-  - id: hero-validate
-    script: hero-validate
-    runtime: bun
-    depends_on: [hero-gen]
-    timeout: 120000
-
   - id: hero-gate
     approval:
       message: |
-        STEP 2 (HERO) — Review the hero video variants and preview frames in $ARTIFACTS_DIR/scenes/hero/.
-        Validation: $ARTIFACTS_DIR/scenes/hero/hero-validate.json. The selected variant is hero-final.mp4.
-        Approve, or reject naming the variant + the issue (Ken-Burns / flat / morph) to regenerate.
+        STEP 1 (HERO) — the ~5s arrival at $ARTIFACTS_DIR/scenes/hero/hero-final.mp4 (Seedance INTERPOLATES
+        panel 1 -> panel 2 as the start/end frames). It should travel from the exterior, through the opening
+        single door, into the interior as one continuous move and LAND on panel 2. Approve, or reject to re-render
+        (tweak the flythrough in $ARTIFACTS_DIR/hero/grid-spec.json — keeping it duration-free — or regenerate a
+        panel + re-compose).
       capture_response: true
       on_reject:
         prompt: |
-          Apply the skill's Step-2D diagnosis to this feedback: $REJECTION_REASON
-          (Ken-Burns -> add subject motion; flat -> camera must travel; morphing -> add physics negatives).
-          Regenerate ONLY the called-out variant by running `bun .archon/scripts/gen-hero-video.ts`
-          with the corrected prompt, then set $ARTIFACTS_DIR/scenes/hero/hero-final.mp4 to the chosen variant
-          and re-run `bun .archon/scripts/hero-validate.ts`.
-        max_attempts: 5
-    depends_on: [hero-validate, brief-critic, prompt-critic]
-    trigger_rule: none_failed_min_one_success
+          Address this feedback: $REJECTION_REASON. If it's the camera/journey, edit
+          $ARTIFACTS_DIR/hero/grid-spec.json flythrough_prompt (NEVER add a duration/timestamp) and re-run
+          `bun .archon/scripts/gen-hero-2frame.ts`. If a panel is wrong, reset it in $ARTIFACTS_DIR/hero/plan.json,
+          regenerate via hf-image.ts, re-run `bun .archon/scripts/compose-grid.ts`, then
+          `bun .archon/scripts/gen-hero-2frame.ts`.
+        max_attempts: 4
+    depends_on: [hero-gen]
 
   # ════════════════════════════════ F. SHOWCASE — GRID method (conditional) ════════════════════════════════
   # Seam-free GRID method: an opus Director designs same-style scene panels for ONE storyboard image, that single
@@ -406,9 +437,16 @@ nodes:
   # SAME single-source building blocks — commands `showcase-director`/`door-check`, scripts panel-flatten/
   # compose-grid/gen-flythrough/door-swing/grid-verdict-passed, rubric grid.md — so the LOGIC lives in one place;
   # only this node wiring is mirrored. Keep the two F-sections in sync when the pipeline structure changes.
+  - id: showcase-set-marker
+    bash: |
+      mkdir -p "$ARTIFACTS_DIR/showcase" "$ARTIFACTS_DIR/scenes/showcase-grid" "$ARTIFACTS_DIR/scenes/showcase"
+      printf 'showcase' > "$ARTIFACTS_DIR/.cine-section"
+      echo "cine-section -> showcase (showcase phase)"
+    depends_on: [plan-gate, hero-gate]   # serialize the showcase AFTER the hero so the global marker is never raced
+
   - id: showcase-director
     command: showcase-director
-    depends_on: [plan-gate]
+    depends_on: [showcase-set-marker]
     when: "$generation-plan.output.showcase_enabled == 'true'"
     context: fresh
     model: opus

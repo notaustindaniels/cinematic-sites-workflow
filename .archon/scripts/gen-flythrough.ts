@@ -6,7 +6,7 @@
 // DISCIPLINE: the flythrough_prompt must NOT contain a duration/timestamp (the Director is instructed not to
 // write one) — duration is passed ONLY as the --duration parameter. We assert it here as a guard.
 import { existsSync, readFileSync } from "node:fs";
-import { artifactsDir, writeText, ensureDirFor, die, isDryRun } from "./lib/util.ts";
+import { artifactsDir, sectionPaths, writeText, ensureDirFor, die, isDryRun } from "./lib/util.ts";
 import { hfVideo } from "./hf-video.ts";
 
 interface GridSpec { flythrough_prompt?: string; duration?: number }
@@ -91,7 +91,8 @@ function clampDuration(v: unknown): number {
 
 async function main(): Promise<void> {
   const A = artifactsDir();
-  const specPath = `${A}/showcase/grid-spec.json`;
+  const { work, gridDir, videoOut } = sectionPaths(A);   // default showcase; hero uses gen-hero-2frame instead
+  const specPath = `${work}/grid-spec.json`;
   if (!existsSync(specPath)) die(`gen-flythrough: grid-spec.json not found at ${specPath}`);
 
   let spec: GridSpec;
@@ -110,17 +111,17 @@ async function main(): Promise<void> {
   }
 
   const duration = clampDuration(spec.duration);
-  const grid = `${A}/scenes/showcase-grid/grid.png`;
+  const grid = `${gridDir}/grid.png`;
   if (!existsSync(grid)) die(`gen-flythrough: composited grid not found at ${grid} (run compose-grid first)`);
 
   // Emphasize motion verbs (backticks) so Seedance respects the intended motion (e.g. the door swings, not slides).
   const { out: emphasizedPrompt, hits } = emphasizeMotion(prompt);
   process.stderr.write(`[info] gen-flythrough: emphasized ${hits.length} motion verb(s): ${hits.join(", ") || "(none matched)"}\n`);
 
-  const promptFile = `${A}/showcase/flythrough.prompt.txt`;
+  const promptFile = `${work}/flythrough.prompt.txt`;
   writeText(promptFile, emphasizedPrompt);
 
-  const out = `${A}/scenes/showcase/showcase-video.mp4`;
+  const out = videoOut;
   ensureDirFor(out);
 
   process.stderr.write(`[info] gen-flythrough: one Seedance call from grid -> ${out} (duration=${duration}s, dry=${isDryRun()})\n`);
