@@ -17,7 +17,8 @@ export interface HfImageOpts {
   out: string;
   images?: string[]; // reference images (repeatable --image)
   aspect?: string; // default 16:9
-  resolution?: string; // default 2k
+  resolution?: string; // default 2k (flux_2 only — seedream has no resolution param, it is 4k-native)
+  model?: string; // "flux_2" (default) or "seedream_v4_5". Seedream 4.5 is stronger at multi-panel contact sheets.
 }
 
 function resolvePrompt(o: { promptFile?: string; prompt?: string }): string {
@@ -50,16 +51,14 @@ export function hfImage(opts: HfImageOpts): string {
     return url;
   }
 
-  // ---- REAL: build the pinned higgsfield command. ----
-  // flux_2 with the 'pro' variant (explicit, though 'pro' is also the flux_2 default). Same flag surface as the
-  // former nano_banana_2 pin: --prompt / --aspect_ratio (16:9) / --resolution (2k) / repeatable --image refs.
-  const args = [
-    "generate", "create", "flux_2",
-    "--model", "pro",
-    "--prompt", prompt,
-    "--aspect_ratio", aspect,
-    "--resolution", resolution,
-  ];
+  // ---- REAL: build the higgsfield command for the chosen model. ----
+  // Default = Flux.2 Pro (flux_2, model=pro): best for single high-fidelity stills (isolation, hero, sections).
+  // seedream_v4_5 = Seedream 4.5 (4k-native): used ONLY for the multi-panel CONTACT SHEET, which Flux.2 Pro
+  // composes poorly (it duplicates cells). Seedream has no --model / --resolution params (4k is native).
+  const model = (opts.model || "flux_2").trim();
+  const args = model === "seedream_v4_5" || model === "seedream"
+    ? ["generate", "create", "seedream_v4_5", "--prompt", prompt, "--aspect_ratio", aspect]
+    : ["generate", "create", "flux_2", "--model", "pro", "--prompt", prompt, "--aspect_ratio", aspect, "--resolution", resolution];
   for (const ref of images) {
     if (!existsSync(ref)) die(`hf-image: reference image not found: ${ref}`);
     args.push("--image", ref);
@@ -95,6 +94,7 @@ function parseArgs(argv: string[]): HfImageOpts {
       case "--image": (o.images ||= []).push(next()); break;
       case "--aspect": o.aspect = next(); break;
       case "--resolution": o.resolution = next(); break;
+      case "--model": o.model = next(); break;
       default:
         process.stderr.write(`[warn] hf-image: ignoring unknown arg ${a}\n`);
     }

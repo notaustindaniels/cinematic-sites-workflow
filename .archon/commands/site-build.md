@@ -24,8 +24,9 @@ specific to THIS business, driven by the interview input. This node runs with **
    what the client wants. This is your brief — design to it.
 2. `$ARTIFACTS_DIR/brand/brand-system.json` — `headline`, `tagline`, `sections[]` (the per-section copy deck:
    `{key,title,body}`), `mood`, and the palette/fonts (already applied as CSS variables — see Phase 3).
-3. `$ARTIFACTS_DIR/site/site-plan.json` — the planned `sections`, `modules`, `cta`, and **`images[]`** (the
-   generated section images: each has an `id`; the file is at `images/<id>.png` relative to the page).
+3. `$ARTIFACTS_DIR/site/site-plan.json` — the planned `sections`, `modules`, `cta`, **`images[]`** (the
+   generated section images: each has an `id`; the file is at `images/<id>.png` relative to the page), and
+   **`testimonials[]`** (`{quote, author, role}` — social proof to render as its own section).
 4. `$ARTIFACTS_DIR/plan.json` — `before_after_enabled`, `showcase_enabled` (context only; the assembler handles
    the marquee/before-after modules if enabled).
 5. List `$ARTIFACTS_DIR/site/images/` — the actual generated `<id>.png` files you may place (reference each as
@@ -41,6 +42,11 @@ Design a cohesive scroll experience for the content below the hero, tuned to the
   where they carry weight (a wide architectural shot behind a statement; a detail beside copy).
 - **Cinematic restraint** befitting the brand (for an understated-luxury builder: generous whitespace, large
   serif headings, slow fades — not flashy). Match the brand's register.
+- **Testimonials section (REQUIRED when `site-plan.json` has `testimonials[]`):** build a dedicated social-proof
+  section from those `{quote, author, role}` entries — as on-brand cards (a balanced row/grid, or a simple
+  centered quote rotation), with the quote prominent and the author/role beneath. Place it as "proof" in the
+  narrative (after services/process, before the CTA). Style with the brand variables; never skip it when the data
+  exists.
 - **Motion**: give elements the `reveal` class (the page already runs a bidirectional IntersectionObserver that
   toggles `.revealed` on enter/exit — so just add `class="reveal"` to anything that should fade/slide in; you do
   NOT write the observer). Optionally a subtle parallax/transform via a tiny inline style is fine, but keep JS out.

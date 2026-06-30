@@ -150,8 +150,9 @@ function main(): void {
       ? `\n\nRETRY ${csAttempt}: the previous sheet REPEATED a space across cells — that is a FAILURE. Make ABSOLUTELY every cell a different room/view; never repeat the entry, facade, or door; interiors clearly interior, exteriors clearly exterior.`
       : "";
     writeFileSync(csPromptFile, `${header}\n\n${cellLines}${retry}\n`);
-    process.stderr.write(`[info] gen-grid-panels: [${section}] composing ${rows}x${cols} contact sheet of ${N} scenes (attempt ${csAttempt}/${MAX_SHEET_ATTEMPTS}, aspect ${csAspect})\n`);
-    hfImage({ promptFile: csPromptFile, out: csOut, aspect: csAspect, resolution: "2k" });
+    process.stderr.write(`[info] gen-grid-panels: [${section}] composing ${rows}x${cols} contact sheet of ${N} scenes via Seedream 4.5 (attempt ${csAttempt}/${MAX_SHEET_ATTEMPTS}, aspect ${csAspect})\n`);
+    // Seedream 4.5 (4k-native) composes multi-panel grids far better than Flux.2 Pro, which duplicates cells.
+    hfImage({ promptFile: csPromptFile, out: csOut, aspect: csAspect, model: "seedream_v4_5" });
     if (!existsSync(csOut)) die(`gen-grid-panels: contact sheet was not generated`);
     dupPairs = duplicateCellPairs(csOut);
     if (dupPairs.length) process.stderr.write(`[warn] gen-grid-panels: contact-sheet cells look duplicated (${dupPairs.join(", ")}) on attempt ${csAttempt}\n`);
