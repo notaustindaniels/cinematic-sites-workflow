@@ -356,31 +356,57 @@ nodes:
     depends_on: [hero-panel-gen]
     timeout: 700000
 
-  - id: hero-compose
-    script: compose-grid       # reads the marker -> composites $A/scenes/hero-grid/{p1,p2}.png -> grid.png (door-check + review)
-    runtime: bun
+  # VISION VERIFY + AUTO-FIX for the hero (before hero-compose): the entry door in panel 1 must match its prompt
+  # (single vs double + handle side); both panels must be their intended distinct spaces. Regenerate mismatches
+  # via Flux.2 Pro, up to 3 rounds; writes door-obs.json. Same section-aware loop as the showcase (marker=hero).
+  - id: hero-grid-verify
     depends_on: [hero-panel-dedup]
+    idle_timeout: 1200000
+    model: claude-opus-4-8
+    loop:
+      prompt: |
+        FRESH iteration — VISION-verify the rendered panels and FIX any mismatch. No memory between iterations.
+        SECTION = trimmed contents of $ARTIFACTS_DIR/.cine-section (hero|showcase; default showcase) — use it in
+        every path below. Read $ARTIFACTS_DIR/<SECTION>/grid-spec.json → panels[] (id, scene_label, composition,
+        nb_prompt).
+
+        STEP A — VIEW each panel image at $ARTIFACTS_DIR/scenes/<SECTION>-grid/<id>.png and judge:
+          1. SCENE: does it depict its OWN scene_label / nb_prompt space, and is it DISTINCT from every other panel
+             (no two panels showing the same room, facade, or view)?
+          2. DOOR (only the entry panel — the one whose nb_prompt describes a door): does the RENDERED door match
+             the nb_prompt? Check SINGLE vs DOUBLE (a DOUBLE door = two leaves meeting at a center seam, or two pull
+             handles side-by-side in the middle) and which edge the handle is on. The nb_prompt is the intent.
+
+        STEP B — write $ARTIFACTS_DIR/<SECTION>/door-obs.json with the ACTUAL observed entry door (so the later
+        door-swing always has fresh data):
+          { "hinged_door":"yes|no", "door_panel":"<id or ''>", "single_or_double":"single|double|n/a",
+            "handle_side":"left|right|unclear|n/a" }
+
+        STEP C — if ANY panel FAILS step A (wrong/duplicate scene, or a door that contradicts its nb_prompt — e.g.
+        the prompt says SINGLE but the render is DOUBLE), FIX exactly the failing panel(s):
+          - write $ARTIFACTS_DIR/<SECTION>/<id>.fix.txt = the panel's nb_prompt + an explicit correction, e.g.
+            "CRITICAL: the entry door MUST be a SINGLE door — ONE leaf, ONE handle on the <side> edge — NOT a
+            double/paired door." or "This MUST show the <intended scene>, not <what actually rendered>."
+          - regenerate it (Flux.2 Pro, the original prompt re-imposed on the current render):
+            bun .archon/scripts/hf-image.ts --prompt-file $ARTIFACTS_DIR/<SECTION>/<id>.fix.txt --out $ARTIFACTS_DIR/scenes/<SECTION>-grid/<id>.png --image $ARTIFACTS_DIR/scenes/<SECTION>-grid/<id>.png
+          Then END the turn WITHOUT the promise (the next iteration re-verifies the fix).
+
+        STEP D — only if EVERY panel passes (scenes distinct + correct, door matches its prompt), output
+        <promise>GRID_VERIFIED</promise>.
+      until: GRID_VERIFIED
+      max_iterations: 3
+      fresh_context: true
+
+  - id: hero-compose
+    script: compose-grid       # reads the marker -> composites $A/scenes/hero-grid/{p1,p2}.png -> grid.png (review + door)
+    runtime: bun
+    depends_on: [hero-grid-verify]
     timeout: 120000
 
-  - id: hero-door-check
-    command: door-check
-    depends_on: [hero-compose]
-    context: fresh
-    model: opus
-    allowed_tools: [Read, Write]
-    output_format:
-      type: object
-      properties:
-        hinged_door: { type: string, enum: [yes, no] }
-        door_panel: { type: string }
-        single_or_double: { type: string, enum: [single, double, n/a] }
-        handle_side: { type: string, enum: [left, right, unclear, n/a] }
-      required: [hinged_door, handle_side]
-
   - id: hero-door-swing
-    script: door-swing         # reads the marker -> rewrites the door clause in $A/hero/grid-spec.json
+    script: door-swing         # reads the marker -> rewrites the door clause in $A/hero/grid-spec.json (single OR double)
     runtime: bun
-    depends_on: [hero-door-check]
+    depends_on: [hero-compose]
     timeout: 20000
 
   - id: hero-grid-gate
@@ -535,30 +561,58 @@ nodes:
   - id: compose-grid
     script: compose-grid
     runtime: bun
-    depends_on: [panel-dedup]
+    depends_on: [grid-verify]   # montage the VERIFIED panels (scenes + door already vision-checked/regenerated)
     timeout: 120000
 
   # DOOR — OBSERVE (vision) + COMPUTE (code). The AI node ONLY reports which side the handle is on; door-swing.ts
   # computes hinge = opposite handle, swing = hinge side, and rewrites the door clause deterministically.
-  - id: door-check
-    command: door-check
-    depends_on: [compose-grid]
-    context: fresh
-    model: opus
-    allowed_tools: [Read, Write]
-    output_format:
-      type: object
-      properties:
-        hinged_door: { type: string, enum: [yes, no] }
-        door_panel: { type: string }
-        single_or_double: { type: string, enum: [single, double, n/a] }
-        handle_side: { type: string, enum: [left, right, unclear, n/a] }
-      required: [hinged_door, handle_side]
+  # VISION VERIFY + AUTO-FIX. Runs BEFORE compose-grid (so regenerating a panel is safe — the grid is composed
+  # from the verified panels). Confirms each rendered panel matches its intended scene AND is distinct, and that
+  # the entry DOOR matches its prompt (single vs double + handle side). Any panel that doesn't match is handed
+  # back to Flux.2 Pro with a corrective prompt and re-verified — up to 3 rounds. Whatever still fails, the human
+  # grid-gate reviews (the user steps in). Writes door-obs.json each round for the deterministic door-swing.
+  - id: grid-verify
+    depends_on: [panel-dedup]
+    idle_timeout: 1200000
+    model: claude-opus-4-8
+    loop:
+      prompt: |
+        FRESH iteration — VISION-verify the rendered panels and FIX any mismatch. No memory between iterations.
+        SECTION = trimmed contents of $ARTIFACTS_DIR/.cine-section (hero|showcase; default showcase) — use it in
+        every path below. Read $ARTIFACTS_DIR/<SECTION>/grid-spec.json → panels[] (id, scene_label, composition,
+        nb_prompt).
+
+        STEP A — VIEW each panel image at $ARTIFACTS_DIR/scenes/<SECTION>-grid/<id>.png and judge:
+          1. SCENE: does it depict its OWN scene_label / nb_prompt space, and is it DISTINCT from every other panel
+             (no two panels showing the same room, facade, or view)?
+          2. DOOR (only the entry panel — the one whose nb_prompt describes a door): does the RENDERED door match
+             the nb_prompt? Check SINGLE vs DOUBLE (a DOUBLE door = two leaves meeting at a center seam, or two pull
+             handles side-by-side in the middle) and which edge the handle is on. The nb_prompt is the intent.
+
+        STEP B — write $ARTIFACTS_DIR/<SECTION>/door-obs.json with the ACTUAL observed entry door (so the later
+        door-swing always has fresh data):
+          { "hinged_door":"yes|no", "door_panel":"<id or ''>", "single_or_double":"single|double|n/a",
+            "handle_side":"left|right|unclear|n/a" }
+
+        STEP C — if ANY panel FAILS step A (wrong/duplicate scene, or a door that contradicts its nb_prompt — e.g.
+        the prompt says SINGLE but the render is DOUBLE), FIX exactly the failing panel(s):
+          - write $ARTIFACTS_DIR/<SECTION>/<id>.fix.txt = the panel's nb_prompt + an explicit correction, e.g.
+            "CRITICAL: the entry door MUST be a SINGLE door — ONE leaf, ONE handle on the <side> edge — NOT a
+            double/paired door." or "This MUST show the <intended scene>, not <what actually rendered>."
+          - regenerate it (Flux.2 Pro, the original prompt re-imposed on the current render):
+            bun .archon/scripts/hf-image.ts --prompt-file $ARTIFACTS_DIR/<SECTION>/<id>.fix.txt --out $ARTIFACTS_DIR/scenes/<SECTION>-grid/<id>.png --image $ARTIFACTS_DIR/scenes/<SECTION>-grid/<id>.png
+          Then END the turn WITHOUT the promise (the next iteration re-verifies the fix).
+
+        STEP D — only if EVERY panel passes (scenes distinct + correct, door matches its prompt), output
+        <promise>GRID_VERIFIED</promise>.
+      until: GRID_VERIFIED
+      max_iterations: 3
+      fresh_context: true
 
   - id: door-swing
     script: door-swing
     runtime: bun
-    depends_on: [door-check]
+    depends_on: [compose-grid]
     timeout: 20000
 
   # GATE: review the composited grid BEFORE the paid Seedance render.
@@ -567,10 +621,12 @@ nodes:
       message: |
         STEP 2 (SHOWCASE GRID) — this single image is what gets fed to Seedance (review BEFORE the paid render).
         Open $ARTIFACTS_DIR/scenes/showcase-grid/grid.png — the panels should read as ONE space, one light,
-        distinct vantages in journey order, each badged with its scene number. The Seedance flythrough prompt is
-        grid-spec.json.flythrough_prompt (already converged to a PASS verdict via the auto-revise loop), and the
-        door-swing step has set the single-door swing DETERMINISTICALLY from the observed handle side. Approve to
-        render the flythrough, or reject naming the panel(s) to regenerate.
+        distinct vantages in journey order, each badged with its scene number. The panels were already VISION-
+        VERIFIED (grid-verify: each scene distinct + correct, and the entry door matched to its prompt — up to 3
+        auto-fix rounds); if grid-verify could NOT reconcile the door or a scene, THIS is where you step in. The
+        Seedance flythrough prompt is grid-spec.json.flythrough_prompt (converged to PASS), and door-swing has set
+        the swing DETERMINISTICALLY (single OR double, from the verified door). Approve to render, or reject naming
+        the panel(s) to regenerate.
       capture_response: true
       on_reject:
         prompt: |
